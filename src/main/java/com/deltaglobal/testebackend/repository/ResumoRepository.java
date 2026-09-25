@@ -50,8 +50,11 @@ public class ResumoRepository {
         dto.setValorTransferidoNaJanela(BigDecimal.valueOf(somaValor.longValue(), 2));
         dto.setTaxasNaJanela(BigDecimal.valueOf(somaTaxa.longValue(), 2));
         
-        // Fix average scale
-        dto.setTicketMedioNaJanela(BigDecimal.valueOf(mediaValor.doubleValue() / 100).setScale(2, java.math.RoundingMode.HALF_EVEN));
+        // Fix average scale sem double
+        BigDecimal mediaBD = (mediaValor instanceof BigDecimal) 
+            ? (BigDecimal) mediaValor 
+            : BigDecimal.valueOf(mediaValor.longValue());
+        dto.setTicketMedioNaJanela(mediaBD.divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_EVEN));
 
         // estornosNaJanela
         Integer estornos = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM transferencia WHERE estado = 'ESTORNADA' AND transferencia_original_id IS NULL AND concluida_em >= ?", Integer.class, fromTimestamp);

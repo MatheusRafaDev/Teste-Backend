@@ -59,10 +59,7 @@ public class DepositoService {
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "CONTA_INEXISTENTE", "Conta inexistente"));
 
         // Contas encerradas não aceitam depósito
-        if (destino.isEncerrada()) {
-            log.warn("[DEPOSITO RECUSADO] Conta {} está encerrada.", numeroConta);
-            throw new BusinessException(HttpStatus.CONFLICT, "CONTA_ENCERRADA", "Não é possível depositar em conta encerrada");
-        }
+        destino.validarAtivaParaEntrada();
 
         // Adquire locks pessimistas em ambas as contas (SISTEMA-ENTRADA e conta de destino)
         // para garantir que os saldos e movimentos sejam consistentes sob concorrência

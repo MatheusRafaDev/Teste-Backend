@@ -2,6 +2,8 @@ package com.deltaglobal.testebackend.domain;
 
 import jakarta.persistence.*;
 import java.util.UUID;
+import com.deltaglobal.testebackend.exception.BusinessException;
+import org.springframework.http.HttpStatus;
 
 @Entity
 @Table(name = "conta")
@@ -39,6 +41,18 @@ public class Conta {
 
     public boolean isEncerrada() {
         return estado == EstadoConta.ENCERRADA;
+    }
+
+    public void validarAtivaParaSaida() {
+        if (isEncerrada() || isBloqueada()) {
+            throw new BusinessException(HttpStatus.CONFLICT, "CONTA_ORIGEM_INVALIDA", "Conta de origem não pode estar encerrada ou bloqueada");
+        }
+    }
+
+    public void validarAtivaParaEntrada() {
+        if (isEncerrada()) {
+            throw new BusinessException(HttpStatus.CONFLICT, "CONTA_DESTINO_INVALIDA", "Conta de destino não pode estar encerrada");
+        }
     }
 
     // Getters and setters

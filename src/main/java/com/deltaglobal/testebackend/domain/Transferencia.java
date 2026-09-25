@@ -3,6 +3,8 @@ package com.deltaglobal.testebackend.domain;
 import jakarta.persistence.*;
 import java.time.ZonedDateTime;
 import java.util.UUID;
+import com.deltaglobal.testebackend.exception.BusinessException;
+import org.springframework.http.HttpStatus;
 
 @Entity
 @Table(name = "transferencia")
@@ -42,6 +44,15 @@ public class Transferencia {
     @PrePersist
     protected void onCreate() {
         if (criadaEm == null) criadaEm = ZonedDateTime.now();
+    }
+
+    public void validarParaEstorno() {
+        if (estado == EstadoTransferencia.ESTORNADA) {
+            throw new BusinessException(HttpStatus.CONFLICT, "JA_ESTORNADA", "Transferência já foi estornada");
+        }
+        if (estado != EstadoTransferencia.CONFIRMADA) {
+            throw new BusinessException(HttpStatus.CONFLICT, "ESTADO_INVALIDO", "Transferência não está confirmada");
+        }
     }
 
     // Getters and setters

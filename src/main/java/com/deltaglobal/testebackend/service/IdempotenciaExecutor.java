@@ -10,6 +10,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 import io.micrometer.core.instrument.MeterRegistry;
 
 import java.util.function.Supplier;
@@ -46,11 +47,13 @@ public class IdempotenciaExecutor {
     private final IdempotenciaService idempotenciaService;
     private final ObjectMapper objectMapper;
     private final MeterRegistry meterRegistry;
+    private final TransactionTemplate transactionTemplate;
 
-    public IdempotenciaExecutor(IdempotenciaService idempotenciaService, ObjectMapper objectMapper, MeterRegistry meterRegistry) {
+    public IdempotenciaExecutor(IdempotenciaService idempotenciaService, ObjectMapper objectMapper, MeterRegistry meterRegistry, TransactionTemplate transactionTemplate) {
         this.idempotenciaService = idempotenciaService;
         this.objectMapper = objectMapper;
         this.meterRegistry = meterRegistry;
+        this.transactionTemplate = transactionTemplate;
     }
 
     /**
@@ -85,11 +88,12 @@ public class IdempotenciaExecutor {
         }
 
         try {
-            // Executa a operação real (transferência, depósito, etc.)
-            ResponseEntity<T> response = operation.get();
-
-            // Persiste o registro de idempotência na mesma transação
-            idempotenciaService.registrarIdempotencia(chave, endpoint, hash, response.getBody(), response.getStatusCode().value());
+            // Executa a operação real e persiste o registro na mesma transação para garantir atomicidade
+            ResponseEntity<T> response = transactionTemplate.execute(status -> {
+                ResponseEntity<T> res = operation.get();
+                idempotenciaService.registrarIdempotencia(chave, endpoint, hash, res.getBody(), res.getStatusCode().value());
+                return res;
+            });
             log.info("[IDEMPOTENCIA] Operação concluída. Chave={} registrada para endpoint={}", chave, endpoint);
             return response;
 

@@ -91,15 +91,9 @@ public class TransferenciaService {
         Conta destino = lockedContas.stream().filter(c -> c.getNumero().equals(numDestino)).findFirst()
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "CONTA_DESTINO_INEXISTENTE", "Conta destino não encontrada"));
 
-        // Validação de estado
-        if (origem.isEncerrada() || origem.isBloqueada()) {
-            log.warn("[TRANSFERENCIA BLOQUEADA] Conta origem {} está com estado inválido: {}", numOrigem, origem.getEstado());
-            throw new BusinessException(HttpStatus.CONFLICT, "CONTA_ORIGEM_INVALIDA", "Conta de origem não pode estar encerrada ou bloqueada");
-        }
-        if (destino.isEncerrada()) {
-            log.warn("[TRANSFERENCIA BLOQUEADA] Conta destino {} está encerrada.", numDestino);
-            throw new BusinessException(HttpStatus.CONFLICT, "CONTA_DESTINO_INVALIDA", "Conta de destino não pode estar encerrada");
-        }
+        // Validação de estado centralizada
+        origem.validarAtivaParaSaida();
+        destino.validarAtivaParaEntrada();
 
         // --- PASSO 3: Calcula taxa e valida saldo ---
         Long taxa = taxaService.calcularTaxa(valorCentavos);

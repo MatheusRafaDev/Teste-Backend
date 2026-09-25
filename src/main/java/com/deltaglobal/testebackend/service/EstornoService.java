@@ -70,14 +70,7 @@ public class EstornoService {
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "TRANSFERENCIA_INEXISTENTE", "Transferência não encontrada"));
 
         // --- PASSO 2: Valida estado ---
-        if (original.getEstado() == EstadoTransferencia.ESTORNADA) {
-            log.warn("[ESTORNO RECUSADO] Transferência {} já possui um estorno registrado.", transferenciaId);
-            throw new BusinessException(HttpStatus.CONFLICT, "JA_ESTORNADA", "Transferência já foi estornada");
-        }
-        if (original.getEstado() != EstadoTransferencia.CONFIRMADA) {
-            log.warn("[ESTORNO RECUSADO] Transferência {} está no estado {} (esperado CONFIRMADA)", transferenciaId, original.getEstado());
-            throw new BusinessException(HttpStatus.CONFLICT, "ESTADO_INVALIDO", "Transferência não está confirmada");
-        }
+        original.validarParaEstorno();
 
         // --- PASSO 3: Verifica se já foi estornada (via query direta no banco) ---
         if (transferenciaRepository.existsEstornoConfirmado(transferenciaId)) {

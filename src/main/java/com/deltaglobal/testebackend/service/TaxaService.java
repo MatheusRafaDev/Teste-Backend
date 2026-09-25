@@ -2,6 +2,9 @@ package com.deltaglobal.testebackend.service;
 
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
 /**
  * Serviço responsável pelo cálculo da taxa de transferência.
  *
@@ -30,7 +33,7 @@ public class TaxaService {
     // Teto da taxa: R$ 20,00 em centavos
     private static final long TAXA_MAXIMA_CENTAVOS = 2_000L;
     // Percentual: 1%
-    private static final double PERCENTUAL_TAXA = 0.01;
+    private static final BigDecimal PERCENTUAL_TAXA = new BigDecimal("0.01");
 
     /**
      * Calcula a taxa a ser cobrada para um dado valor de transferência.
@@ -45,7 +48,10 @@ public class TaxaService {
         }
 
         // Calcula 1% e arredonda ao centavo mais próximo
-        long taxa = Math.round(valorCentavos * PERCENTUAL_TAXA);
+        BigDecimal valor = BigDecimal.valueOf(valorCentavos);
+        long taxa = valor.multiply(PERCENTUAL_TAXA)
+                         .setScale(0, RoundingMode.HALF_UP)
+                         .longValue();
 
         // Aplica o mínimo de R$ 1,00
         if (taxa < TAXA_MINIMA_CENTAVOS) {
