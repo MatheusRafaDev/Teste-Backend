@@ -9,8 +9,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public class DepositoRequest {
     @Schema(example = "50.00")
     @NotNull
-    @DecimalMin(value = "0.01", inclusive = true)
-    @DecimalMax(value = "10000.00", inclusive = true)
     private BigDecimal valor;
 
     public BigDecimal getValor() { return valor; }

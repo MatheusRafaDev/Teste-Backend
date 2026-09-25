@@ -16,7 +16,6 @@ public class AgendamentoRequest {
     private String contaDestino;
     @Schema(example = "100.00")
     @NotNull
-    @DecimalMin(value = "0.01", inclusive = true)
     private BigDecimal valor;
     @Schema(example = "2026-10-24T10:00:00-03:00")
     @NotNull

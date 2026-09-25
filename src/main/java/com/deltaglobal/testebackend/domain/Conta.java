@@ -27,10 +27,6 @@ public class Conta {
     @Column(nullable = false)
     private EstadoConta estado;
 
-    @Version
-    @Column(nullable = false)
-    private Long versao;
-
     public boolean isSistema() {
         return usuarioId == null;
     }
@@ -68,6 +64,4 @@ public class Conta {
     public void setLimiteDiarioCentavos(Long limiteDiarioCentavos) { this.limiteDiarioCentavos = limiteDiarioCentavos; }
     public EstadoConta getEstado() { return estado; }
     public void setEstado(EstadoConta estado) { this.estado = estado; }
-    public Long getVersao() { return versao; }
-    public void setVersao(Long versao) { this.versao = versao; }
 }

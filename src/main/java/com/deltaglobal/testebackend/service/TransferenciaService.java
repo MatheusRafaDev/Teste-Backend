@@ -71,21 +71,29 @@ public class TransferenciaService {
     public Transferencia realizarTransferencia(String numOrigem, String numDestino, Long valorCentavos) {
         log.info("[TRANSFERENCIA] Iniciando: {} → {} | Valor={} centavos", numOrigem, numDestino, valorCentavos);
 
+        if (valorCentavos <= 0) {
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "VALOR_INVALIDO", "Valor menor ou igual a zero");
+        }
+
         if (numOrigem.equals(numDestino)) {
             throw new BusinessException(HttpStatus.CONFLICT, "CONTAS_IGUAIS", "Conta origem e destino são iguais");
         }
 
         // --- PASSO 1 e 2: Aquisição de locks em ORDEM CANÔNICA (anti-deadlock) ---
-        // Ordenamos os números das contas para garantir uma ordem de lock consistente.
+        // Ordenamos os UUIDs das contas para garantir uma ordem de lock consistente.
         log.debug("[TRANSFERENCIA] Adquirindo locks pessimistas em ordem canônica para: {} e {}", numOrigem, numDestino);
-        List<String> numeros = Arrays.asList(numOrigem, numDestino);
-        numeros.sort(String::compareTo);
-        List<Conta> lockedContas = contaRepository.findByNumeroInForUpdateOrderByNumero(numeros);
-
-        Conta origem = lockedContas.stream().filter(c -> c.getNumero().equals(numOrigem)).findFirst()
+        
+        Conta origemUnlocked = contaRepository.findByNumero(numOrigem)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "CONTA_ORIGEM_INEXISTENTE", "Conta origem não encontrada"));
-        Conta destino = lockedContas.stream().filter(c -> c.getNumero().equals(numDestino)).findFirst()
+        Conta destinoUnlocked = contaRepository.findByNumero(numDestino)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "CONTA_DESTINO_INEXISTENTE", "Conta destino não encontrada"));
+
+        List<java.util.UUID> orderedIds = Arrays.asList(origemUnlocked.getId(), destinoUnlocked.getId());
+        orderedIds.sort(java.util.UUID::compareTo);
+        List<Conta> lockedContas = contaRepository.findByIdInForUpdateOrderById(orderedIds);
+
+        Conta origem = lockedContas.stream().filter(c -> c.getId().equals(origemUnlocked.getId())).findFirst().get();
+        Conta destino = lockedContas.stream().filter(c -> c.getId().equals(destinoUnlocked.getId())).findFirst().get();
 
         // Validação de estado centralizada
         origem.validarAtivaParaSaida();

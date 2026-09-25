@@ -54,6 +54,10 @@ public class DepositoService {
     public Transferencia depositar(String numeroConta, Long valorCentavos) {
         log.info("[DEPOSITO] Iniciando depósito de {} centavos na conta {}", valorCentavos, numeroConta);
 
+        if (valorCentavos <= 0 || valorCentavos > 1000000L) {
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "VALOR_INVALIDO", "Valor menor ou igual a zero, ou maior que R$ 10.000,00");
+        }
+
         // Valida existência e estado da conta (sem lock ainda, apenas para verificação rápida)
         Conta destino = contaRepository.findByNumero(numeroConta)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "CONTA_INEXISTENTE", "Conta inexistente"));

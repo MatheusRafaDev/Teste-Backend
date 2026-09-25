@@ -57,8 +57,11 @@ class TransferenciaServiceTest {
         destino.setEstado(EstadoConta.ATIVA);
         destino.setNumero("456");
 
-        List<String> numeros = Arrays.asList("123", "456");
-        when(contaRepository.findByNumeroInForUpdateOrderByNumero(numeros)).thenReturn(Arrays.asList(origem, destino));
+        when(contaRepository.findByNumero("123")).thenReturn(java.util.Optional.of(origem));
+        when(contaRepository.findByNumero("456")).thenReturn(java.util.Optional.of(destino));
+        List<UUID> orderedIds = Arrays.asList(origem.getId(), destino.getId());
+        orderedIds.sort(UUID::compareTo);
+        when(contaRepository.findByIdInForUpdateOrderById(orderedIds)).thenReturn(Arrays.asList(origem, destino));
 
         assertThrows(BusinessException.class, () -> transferenciaService.realizarTransferencia("123", "456", 1000L));
     }

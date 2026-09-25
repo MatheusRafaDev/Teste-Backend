@@ -15,7 +15,6 @@ public class TransferenciaRequest {
     private String contaDestino;
     @Schema(example = "100.00")
     @NotNull
-    @DecimalMin(value = "0.01", inclusive = true)
     private BigDecimal valor;
 
     public String getContaOrigem() { return contaOrigem; }

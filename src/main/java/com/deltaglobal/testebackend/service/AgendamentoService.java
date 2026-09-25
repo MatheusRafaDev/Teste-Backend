@@ -36,8 +36,7 @@ import java.util.List;
  *      impedindo que outros jobs peguem o mesmo registro.
  *
  *   3. Se a instância cair durante o processamento, o registro fica com estado
- *      PROCESSANDO indefinidamente. Por isso, uma melhoria futura seria um
- *      "reaper job" que reseta agendamentos presos em PROCESSANDO há muito tempo.
+ *      PROCESSANDO indefinidamente. Um "reaper job" reseta agendamentos presos.
  *
  * TRATAMENTO DE FALHAS:
  * - BusinessException (ex: saldo insuficiente): agendamento vai para FALHADO
@@ -85,6 +84,10 @@ public class AgendamentoService {
      */
     @Transactional
     public Agendamento criarAgendamento(String numOrigem, String numDestino, Long valorCentavos, ZonedDateTime executarEm) {
+        if (valorCentavos <= 0) {
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "VALOR_INVALIDO", "Valor menor ou igual a zero");
+        }
+
         // Valida que a data de execução é no futuro
         if (executarEm.isBefore(ZonedDateTime.now(clock))) {
             throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "DATA_PASSADA", "Data de execução no passado");
@@ -144,7 +147,7 @@ public class AgendamentoService {
 
         for (Agendamento a : lote) {
             try {
-                processarUmAgendamento(a);
+                context.getBean(AgendamentoService.class).processarUmAgendamento(a);
             } catch (Exception e) {
                 log.error("[JOB AGENDAMENTOS] Erro inesperado ao processar agendamento ID={}: {}", a.getId(), e.getMessage());
             }
@@ -195,10 +198,11 @@ public class AgendamentoService {
     /**
      * Processa um único agendamento: tenta realizar a transferência correspondente.
      * Atualiza o estado do agendamento conforme o resultado.
-     * Não é @Transactional para que o TransferenciaService crie sua própria transação.
+     * Deve ser transacional para garantir atomicidade.
      *
      * @param a O agendamento a ser processado (deve estar em estado PROCESSANDO).
      */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void processarUmAgendamento(Agendamento a) {
         log.debug("[AGENDAMENTO] Processando ID={} | {}→{} | Valor={} centavos",
                 a.getId(), a.getContaOrigem().getNumero(), a.getContaDestino().getNumero(), a.getValorCentavos());
