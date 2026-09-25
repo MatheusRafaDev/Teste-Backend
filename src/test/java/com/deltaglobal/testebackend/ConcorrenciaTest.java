@@ -117,4 +117,131 @@ class ConcorrenciaTest {
         assertEquals(1, countCreated, "Apenas uma requisição deve criar");
         assertEquals(4, countOk, "As outras 4 devem retornar a resposta original com 200 OK");
     }
+
+    @Test
+    void testEstornoConcorrenteSimultaneo() throws Exception {
+        int numThreads = 5;
+        ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+
+        // 1. Criar uma transferência válida primeiro
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Idempotency-Key", UUID.randomUUID().toString());
+        headers.set("Content-Type", "application/json");
+        String transferBody = "{\"contaOrigem\":\"CONTA-001\", \"contaDestino\":\"CONTA-002\", \"valor\":100.00}";
+        
+        ResponseEntity<java.util.Map> transferRes = restTemplate.exchange("/transferencias", HttpMethod.POST, new HttpEntity<>(transferBody, headers), java.util.Map.class);
+        assertEquals(HttpStatus.CREATED, transferRes.getStatusCode());
+        String transfId = transferRes.getBody().get("transferenciaId").toString();
+
+        // 2. Estornar concorrentemente
+        String estornoBody = "{\"motivo\":\"Estorno de teste\"}";
+        Callable<ResponseEntity<String>> task = () -> {
+            HttpHeaders estornoHeaders = new HttpHeaders();
+            estornoHeaders.set("Idempotency-Key", UUID.randomUUID().toString()); // chaves diferentes para forçar a concorrência na regra de negócio
+            estornoHeaders.set("Content-Type", "application/json");
+            return restTemplate.exchange("/transferencias/" + transfId + "/estorno", HttpMethod.POST, new HttpEntity<>(estornoBody, estornoHeaders), String.class);
+        };
+
+        List<Callable<ResponseEntity<String>>> tasks = new ArrayList<>();
+        for (int i = 0; i < numThreads; i++) {
+            tasks.add(task);
+        }
+
+        List<Future<ResponseEntity<String>>> futures = executorService.invokeAll(tasks);
+
+        int countCreated = 0;
+        int countConflict = 0;
+
+        for (Future<ResponseEntity<String>> f : futures) {
+            HttpStatus status = HttpStatus.valueOf(f.get().getStatusCode().value());
+            if (status == HttpStatus.CREATED) countCreated++;
+            if (status == HttpStatus.CONFLICT) countConflict++;
+        }
+
+        assertEquals(1, countCreated, "Apenas um estorno deve ser efetuado");
+        assertEquals(4, countConflict, "Os outros 4 devem falhar por estado inválido ou duplicidade");
+    }
+
+    @Test
+    void testLimiteDiarioConcorrenteEstourado() throws Exception {
+        int numThreads = 2;
+        ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+
+        // O limite diário é 2000. Cada conta inicia com 1000. 
+        // Vamos tentar duas transferências de 600 da CONTA-001 para a CONTA-002.
+        // Sozinhas elas passam, mas juntas dão 1200, que supera o saldo atual de 1000. 
+        // Para testar o LIMITE DIÁRIO (2000), precisaríamos que o saldo fosse maior que o limite.
+        // Vamos depositar 2000 na CONTA-001 para que ela tenha 3000 de saldo.
+        HttpHeaders depHeaders = new HttpHeaders();
+        depHeaders.set("Idempotency-Key", UUID.randomUUID().toString());
+        depHeaders.set("Content-Type", "application/json");
+        restTemplate.exchange("/contas/CONTA-001/depositos", HttpMethod.POST, new HttpEntity<>("{\"valor\":2000.00}", depHeaders), String.class);
+
+        // Agora a conta tem 3000 de saldo, mas limite diário de 2000.
+        // Duas threads vão tentar transferir 1200. Somadas (2400) estouram o limite de 2000.
+        Callable<ResponseEntity<String>> task1 = () -> {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Idempotency-Key", UUID.randomUUID().toString());
+            headers.set("Content-Type", "application/json");
+            String body = "{\"contaOrigem\":\"CONTA-001\", \"contaDestino\":\"CONTA-002\", \"valor\":1200.00}";
+            return restTemplate.exchange("/transferencias", HttpMethod.POST, new HttpEntity<>(body, headers), String.class);
+        };
+
+        Callable<ResponseEntity<String>> task2 = () -> {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Idempotency-Key", UUID.randomUUID().toString());
+            headers.set("Content-Type", "application/json");
+            String body = "{\"contaOrigem\":\"CONTA-001\", \"contaDestino\":\"CONTA-002\", \"valor\":1200.00}";
+            return restTemplate.exchange("/transferencias", HttpMethod.POST, new HttpEntity<>(body, headers), String.class);
+        };
+
+        List<Future<ResponseEntity<String>>> futures = executorService.invokeAll(List.of(task1, task2));
+        
+        int countCreated = 0;
+        int countUnprocessable = 0;
+
+        for (Future<ResponseEntity<String>> f : futures) {
+            HttpStatus status = HttpStatus.valueOf(f.get().getStatusCode().value());
+            if (status == HttpStatus.CREATED) countCreated++;
+            if (status == HttpStatus.UNPROCESSABLE_ENTITY) countUnprocessable++;
+        }
+
+        assertEquals(1, countCreated, "Apenas uma transferência de 1200 deve passar");
+        assertEquals(1, countUnprocessable, "A outra deve falhar por limite diário estourado");
+    }
+
+    @Test
+    void testIdempotenciaConcorrenteCorpoDiferente() throws Exception {
+        int numThreads = 5;
+        ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+
+        String idempotencyKey = UUID.randomUUID().toString();
+
+        List<Callable<ResponseEntity<String>>> tasks = new ArrayList<>();
+        for (int i = 0; i < numThreads; i++) {
+            final int index = i;
+            tasks.add(() -> {
+                HttpHeaders headers = new HttpHeaders();
+                headers.set("Idempotency-Key", idempotencyKey);
+                headers.set("Content-Type", "application/json");
+                // Corpo diferente em cada thread
+                String body = "{\"contaOrigem\":\"CONTA-003\", \"contaDestino\":\"CONTA-004\", \"valor\":" + (50 + index) + ".00}";
+                return restTemplate.exchange("/transferencias", HttpMethod.POST, new HttpEntity<>(body, headers), String.class);
+            });
+        }
+
+        List<Future<ResponseEntity<String>>> futures = executorService.invokeAll(tasks);
+
+        int countCreated = 0;
+        int countConflict = 0;
+
+        for (Future<ResponseEntity<String>> f : futures) {
+            HttpStatus status = HttpStatus.valueOf(f.get().getStatusCode().value());
+            if (status == HttpStatus.CREATED) countCreated++;
+            if (status == HttpStatus.CONFLICT) countConflict++;
+        }
+
+        assertEquals(1, countCreated, "Apenas uma requisição (a primeira a commitar) deve criar");
+        assertEquals(4, countConflict, "As outras 4 devem dar 409 Conflict porque a chave é a mesma mas o corpo é diferente");
+    }
 }

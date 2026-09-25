@@ -36,6 +36,15 @@ public class Agendamento {
     @JoinColumn(name = "transferencia_id")
     private Transferencia transferencia;
 
+    @Column(name = "atualizado_em", nullable = false)
+    private ZonedDateTime atualizadoEm;
+
+    @PrePersist
+    @PreUpdate
+    public void prePersistOrUpdate() {
+        this.atualizadoEm = ZonedDateTime.now();
+    }
+
     // Getters and setters
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -53,4 +62,6 @@ public class Agendamento {
     public void setTentativas(Integer tentativas) { this.tentativas = tentativas; }
     public Transferencia getTransferencia() { return transferencia; }
     public void setTransferencia(Transferencia transferencia) { this.transferencia = transferencia; }
+    public ZonedDateTime getAtualizadoEm() { return atualizadoEm; }
+    public void setAtualizadoEm(ZonedDateTime atualizadoEm) { this.atualizadoEm = atualizadoEm; }
 }

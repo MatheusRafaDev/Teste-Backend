@@ -60,6 +60,9 @@ public class AgendamentoService {
     private final Clock clock;
     private final ApplicationContext context;
 
+    @org.springframework.beans.factory.annotation.Value("${app.agendamento.reaper.timeout-minutos:5}")
+    private int reaperTimeoutMinutos;
+
     public AgendamentoService(AgendamentoRepository agendamentoRepository, ContaRepository contaRepository,
                               TransferenciaService transferenciaService, Clock clock, ApplicationContext context) {
         this.agendamentoRepository = agendamentoRepository;
@@ -117,7 +120,7 @@ public class AgendamentoService {
             throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "ESTADO_INVALIDO", "Agendamento já em andamento ou concluído");
         }
 
-        a.setEstado(EstadoAgendamento.FALHADO);
+        a.setEstado(EstadoAgendamento.CANCELADO);
         agendamentoRepository.save(a);
         log.info("[AGENDAMENTO CANCELADO] ID={}", id);
     }
@@ -221,5 +224,24 @@ public class AgendamentoService {
             }
         }
         agendamentoRepository.save(a);
+    }
+
+    /**
+     * Job agendado que resgata agendamentos presos em estado PROCESSANDO
+     * (por exemplo, devido a queda da instância durante a execução).
+     */
+    @Scheduled(fixedDelayString = "${app.agendamento.reaper.fixed-delay:60000}")
+    @Transactional
+    public void reaperJob() {
+        ZonedDateTime limiteTime = ZonedDateTime.now(clock).minusMinutes(reaperTimeoutMinutos);
+        int rowsUpdated = agendamentoRepository.resetAgendamentosTravados(
+                EstadoAgendamento.PROCESSANDO,
+                EstadoAgendamento.AGENDADO,
+                limiteTime,
+                ZonedDateTime.now(clock)
+        );
+        if (rowsUpdated > 0) {
+            log.info("[REAPER JOB] Resgatados {} agendamentos travados em PROCESSANDO há mais de {} minutos", rowsUpdated, reaperTimeoutMinutos);
+        }
     }
 }

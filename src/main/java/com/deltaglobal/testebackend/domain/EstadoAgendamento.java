@@ -4,5 +4,6 @@ public enum EstadoAgendamento {
     AGENDADO,
     PROCESSANDO,
     CONCLUIDO,
-    FALHADO
+    FALHADO,
+    CANCELADO
 }

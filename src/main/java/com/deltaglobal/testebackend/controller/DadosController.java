@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
  */
 @RestController
 @RequestMapping("/dados")
+@org.springframework.context.annotation.Profile("dev")
 public class DadosController {
 
     private static final Logger log = LoggerFactory.getLogger(DadosController.class);

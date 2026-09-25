@@ -22,4 +22,8 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, UUID> 
     @QueryHints({@QueryHint(name = "jakarta.persistence.lock.timeout", value = "-2")})
     @Query("SELECT a FROM Agendamento a WHERE a.estado = :estado AND a.executarEm <= :now ORDER BY a.executarEm ASC")
     List<Agendamento> findForProcessing(EstadoAgendamento estado, ZonedDateTime now, Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Agendamento a SET a.estado = :novoEstado, a.tentativas = a.tentativas + 1, a.atualizadoEm = :agora WHERE a.estado = :estadoAtual AND a.atualizadoEm <= :limiteTime")
+    int resetAgendamentosTravados(EstadoAgendamento estadoAtual, EstadoAgendamento novoEstado, ZonedDateTime limiteTime, ZonedDateTime agora);
 }

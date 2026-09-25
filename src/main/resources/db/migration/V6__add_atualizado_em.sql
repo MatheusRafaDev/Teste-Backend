@@ -1,0 +1,1 @@
+ALTER TABLE agendamento ADD COLUMN atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW();

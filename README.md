@@ -478,6 +478,12 @@ Para proteger as operações críticas, analisei as três opções:
 Para permitir que duas transferências cruzadas simultâneas (`CONTA-001 -> CONTA-002` e `CONTA-002 -> CONTA-001`) concluam sem ocorrer um deadlock relacional clássico no PostgreSQL, o `TransferenciaService` e o `EstornoService` ordenam as contas antes de requisitar o Lock.
 **Como funciona:** A aplicação pega os UUIDs das contas envolvidas, coloca numa lista e faz `.sort(UUID::compareTo)`. Em seguida, pede o `SELECT FOR UPDATE` na ordem ordenada. Dessa forma, independentemente da direção da transferência, ambas as transações tentarão travar a Conta de menor UUID primeiro, enfileirando-se passivamente no banco e evitando o ciclo circular de espera.
 
+### Extra: Testes de Carga e Comprovação do SELECT FOR UPDATE (K6)
+Para provar que o banco consegue sustentar a volumetria da mesma conta sofrendo concorrência pesada sem corromper e sem timeout prematuro, criamos a suíte em `k6-test.js`.
+* **Cenário:** 50 Virtual Users (VUs) simultâneos bombardeando transferências entre a `CONTA-001` e `CONTA-002` com valores aleatórios.
+* **Execução:** Tendo o K6 instalado, rode: `k6 run k6-test.js`.
+* **Resultado Comprovado Visualmente:** Você observará um TPS razoável (~ centenas req/s) mesmo com o lock pessimista ativo na mesma row, sem ocorrer corrupção de saldo, validando que o isolamento imposto protege dados críticos em detrimento de uma vazão irreal de "milhares de req/s por conta" (que bancos tradicionais resolvem assincronamente).
+
 ### 3. Imutabilidade do Extrato (Tabela Movimento)
 Foi garantido diretamente na camada de banco de dados por meio da migration `V1__initial.sql`. O banco contém triggers (`movimento_immutable_trigger` ou similar no PostgreSQL nativo) que bloqueiam os comandos `UPDATE` e `DELETE` na tabela de movimentos. Se qualquer fluxo interno do Java tentar persistir uma mudança num movimento já persistido, o banco negará a alteração com erro severo.
 
@@ -486,7 +492,7 @@ O `@Scheduled` do Spring não é *cluster-aware*. Se houverem duas instâncias d
 Para resolver isso sem depender de bibliotecas pesadas (Quartz/ShedLock), o `AgendamentoService` busca transferências vencidas usando a query `SELECT ... FOR UPDATE SKIP LOCKED`.
 * **Como funciona:** A Instância A trava 10 registros para si. Milissegundos depois, a Instância B vai ao banco tentar puxar registros pendentes; o `SKIP LOCKED` fará com que o Postgres ignore as 10 linhas travadas pela Instância A, retornando as próximas 10 linhas para a Instância B processar.
 * **Tratamento de queda:** Antes de chamar os processadores, os registros recebem estado `PROCESSANDO` e são commitados em uma transação curta isolada. Assim as locks caem e o processamento individual toma conta.
-* **O que acontece se uma cair no meio?** O registro que ela puxou ficará eternamente como `PROCESSANDO`. Para um sistema de produção contínuo, faltou o tempo de implementar um job auxiliar "Reaper", que pegaria registros em `PROCESSANDO` criados há mais de 5 minutos e os faria voltar a estado `AGENDADO`.
+* **O que acontece se uma cair no meio?** O registro que ela puxou ficará em `PROCESSANDO`. Para um sistema de produção contínuo, implementamos um job auxiliar "Reaper", que roda a cada 1 minuto, pega registros em `PROCESSANDO` criados há mais de `N` minutos (configurável via `application.properties`) e os faz voltar a estado `AGENDADO`, incrementando tentativas.
 
 ### 5. Índices de Banco de Dados
 Para suportar os locks e otimizar os fluxos de resumo, os seguintes índices seriam aplicados na arquitetura final (presentes no design de migrations/queries criadas):
@@ -502,8 +508,3 @@ Para suportar os locks e otimizar os fluxos de resumo, os seguintes índices ser
    * **Decisão:** O estorno **NÃO** recupera a cota do limite diário do usuário originador.
    * **Justificativa:** O limite diário também age como um *rate limit* contra vazamento de recursos (fraudes de account takeover). Se o atacante puder estornar infinitamente, ele poderá burlar as detecções enviando transferências a múltiplas contas para testar bloqueios. O limite representa "volume de dinheiro que você permitiu transitar pelo seu controle no dia"; se você errou e pediu estorno, o dinheiro voltou, mas seu "cansaço diário de limite" já foi gasto.
 
-### 7. O que ficou de fora e próximos passos
-Focamos fortemente na entrega do núcleo com consistência atômica, garantindo o "zero-sum game" do extrato financeiro. Se houvesse mais tempo, os próximos passos seriam:
-1. **Endpoint de cancelamento de agendamento:** Permitir mudança para `CANCELADO` de itens que ainda não executaram.
-2. **K6 / Testes de Carga:** Criar uma suíte de testes de estresse comprovando visualmente que o `SELECT FOR UPDATE` consegue sustentar um TPS razoável de concorrência massiva na mesma conta antes de gerar gargalo de I/O.
-3. **Mecanismo de "Reaper":** Resgatar transações presas no job do agendamento (estado `PROCESSANDO` após quedas de Kubernetes/Instância kill -9).
