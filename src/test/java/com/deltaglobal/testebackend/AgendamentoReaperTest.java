@@ -129,12 +129,7 @@ class AgendamentoReaperTest {
         Long saldoOrigemAtual = jdbcTemplate.queryForObject("SELECT saldo_centavos FROM conta WHERE numero = 'CONTA-001'", Long.class);
         assertEquals(saldoOrigemAnterior, saldoOrigemAtual, "O saldo não deve ter mudado pois a transferência sofreu rollback");
 
-        // 2. Nenhuma transferência ligada ao agendamento existe no banco
-        Integer countTr = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM transferencia", Integer.class);
-        // Considerando que a base limpa pode ter outras (depende do initial data), 
-        // vamos checar se agendamento_id não existe ou simplesmente verificar o estado do agendamento
-        
-        // 3. O agendamento continuou em PROCESSANDO (estado pré-transação atômica)
+        // 2. O agendamento continuou em PROCESSANDO (estado pré-transação atômica)
         Agendamento aposCrash = agendamentoRepository.findById(a.getId()).orElseThrow();
         assertEquals(EstadoAgendamento.PROCESSANDO, aposCrash.getEstado(), "O agendamento continuou no estado anterior pois a atualização de CONCLUIDO sofreu rollback");
     }
