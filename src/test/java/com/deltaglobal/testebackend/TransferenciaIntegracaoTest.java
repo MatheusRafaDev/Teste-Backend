@@ -22,9 +22,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Disabled;
 
-@Disabled("Testcontainers requires specific Docker setup on this environment")
+
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 class TransferenciaIntegracaoTest {
 
     @Container

@@ -508,3 +508,14 @@ Para suportar os locks e otimizar os fluxos de resumo, os seguintes índices ser
    * **Decisão:** O estorno **NÃO** recupera a cota do limite diário do usuário originador.
    * **Justificativa:** O limite diário também age como um *rate limit* contra vazamento de recursos (fraudes de account takeover). Se o atacante puder estornar infinitamente, ele poderá burlar as detecções enviando transferências a múltiplas contas para testar bloqueios. O limite representa "volume de dinheiro que você permitiu transitar pelo seu controle no dia"; se você errou e pediu estorno, o dinheiro voltou, mas seu "cansaço diário de limite" já foi gasto.
 
+### 7. Notas sobre Testes de Integração e CI (Testcontainers)
+Os testes críticos que provam concorrência, imutabilidade e o reaper (`TransferenciaIntegracaoTest`, `MovimentoTriggerTest`, `ConcorrenciaTest` e `AgendamentoReaperTest`) dependem estritamente do PostgreSQL real orquestrado via Testcontainers. 
+
+**Por que eles podem aparecer como "Skipped" na sua máquina ou no CI:**
+Foi utilizada a anotação oficial `@Testcontainers(disabledWithoutDocker = true)`. Caso o ambiente executor (como uma pipeline restrita de CI ou WSL sem bind de socket) bloqueie o acesso ao daemon do Docker (`npipe:////./pipe/docker_engine`), a suíte aborta silenciosamente os testes de infraestrutura ao invés de quebrar o *build* de forma irreparável, mas mantendo a execução dos testes unitários padrão.
+Nenhuma anotação `@Disabled` absoluta é mantida.
+
+**Como rodar manualmente os testes completos:**
+1. Certifique-se de que o Docker Desktop (ou Docker Engine) esteja em execução e saudável.
+2. Certifique-se de que não haja bloqueios de segurança contra montagem de sockets.
+3. Rode na raiz do projeto: `./mvnw clean test` (ou via IDE). O output do Surefire confirmará que os 14 cenários desses 4 arquivos foram rodados.

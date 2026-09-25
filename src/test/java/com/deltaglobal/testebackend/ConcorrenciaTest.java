@@ -31,9 +31,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import org.junit.jupiter.api.Disabled;
 
-@Disabled("Testcontainers requires specific Docker setup on this environment")
+
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 class ConcorrenciaTest {
 
     @Container

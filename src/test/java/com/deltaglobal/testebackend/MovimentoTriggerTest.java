@@ -16,9 +16,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import org.junit.jupiter.api.Disabled;
 
-@Disabled("Testcontainers requires specific Docker setup on this environment")
+
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 class MovimentoTriggerTest {
 
     @Container

@@ -23,9 +23,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import org.junit.jupiter.api.Disabled;
 
-@Disabled("Testcontainers requires specific Docker setup on this environment")
+
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 class AgendamentoReaperTest {
 
     @Container
