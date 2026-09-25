@@ -95,6 +95,10 @@ public class AgendamentoService {
         Conta destino = contaRepository.findByNumero(numDestino)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "CONTA_DESTINO_INEXISTENTE", "Conta destino não encontrada"));
 
+        if (origem.isSistema() || destino.isSistema()) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "CONTA_SISTEMA_NAO_PERMITIDA", "Contas de sistema não podem ser movimentadas via agendamento");
+        }
+
         Agendamento a = new Agendamento();
         a.setContaOrigem(origem);
         a.setContaDestino(destino);

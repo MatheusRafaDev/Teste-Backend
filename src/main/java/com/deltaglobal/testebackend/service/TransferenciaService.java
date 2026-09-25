@@ -95,6 +95,10 @@ public class TransferenciaService {
         origem.validarAtivaParaSaida();
         destino.validarAtivaParaEntrada();
 
+        if (origem.isSistema() || destino.isSistema()) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "CONTA_SISTEMA_NAO_PERMITIDA", "Contas de sistema não podem ser movimentadas manualmente");
+        }
+
         // --- PASSO 3: Calcula taxa e valida saldo ---
         Long taxa = taxaService.calcularTaxa(valorCentavos);
         Long totalDebitado = valorCentavos + taxa;
@@ -119,7 +123,7 @@ public class TransferenciaService {
 
             Long usadoHoje = transferenciaRepository.sumValorTransferidoNoDia(
                     origem.getId(),
-                    EstadoTransferencia.CONFIRMADA,
+                    Arrays.asList(EstadoTransferencia.CONFIRMADA, EstadoTransferencia.ESTORNADA),
                     startOfDay,
                     endOfDay);
 

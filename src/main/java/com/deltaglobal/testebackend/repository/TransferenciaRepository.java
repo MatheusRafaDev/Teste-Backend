@@ -28,13 +28,13 @@ public interface TransferenciaRepository extends JpaRepository<Transferencia, UU
             SELECT COALESCE(SUM(t.valorCentavos), 0)
             FROM Transferencia t
             WHERE t.contaOrigem.id = :contaOrigemId
-              AND t.estado = :estado
+              AND t.estado IN :estados
               AND t.transferenciaOriginal IS NULL
               AND t.criadaEm >= :inicio
               AND t.criadaEm <= :fim
             """)
     Long sumValorTransferidoNoDia(UUID contaOrigemId,
-                                  EstadoTransferencia estado,
+                                  java.util.List<EstadoTransferencia> estados,
                                   ZonedDateTime inicio,
                                   ZonedDateTime fim);
 

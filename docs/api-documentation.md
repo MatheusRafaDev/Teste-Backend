@@ -105,6 +105,7 @@ Transfere dinheiro da `contaOrigem` para a `contaDestino`. A operação é atôm
     }
     ```
   - `400 Bad Request`: Payload inválido ou header faltando.
+  - `403 Forbidden`: Tentativa não autorizada de movimentar contas reservadas do sistema (ex: `SISTEMA-ENTRADA` ou `SISTEMA-TAXAS`).
   - `404 Not Found`: Conta não encontrada.
   - `409 Conflict`: Contas bloqueadas/encerradas, ou payload conflitante com idempotência.
   - `422 Unprocessable Entity`: Código `SALDO_INSUFICIENTE` ou `LIMITE_DIARIO_EXCEDIDO` (Limite padrão: R$ 2.000,00/dia).
@@ -132,6 +133,7 @@ Programa uma transferência para execução futura. Nenhuma validação de saldo
       "estado": "AGENDADO"
     }
     ```
+  - `403 Forbidden`: Tentativa não autorizada de movimentar contas reservadas do sistema.
   - `404 Not Found`: Conta de origem ou destino inexistente.
   - `422 Unprocessable Entity`: Data de execução `executarEm` está no passado.
 
@@ -206,7 +208,8 @@ Retorna as estatísticas gerenciais agregadas dinamicamente via JPQL, filtrando 
     ```
 
 ### 7. Administração (Wipe-out)
-Ação de limpeza exclusiva de testes. Executa um drop/migrate no Flyway, limpando todas as informações, movimentos e saldos, voltando o sistema ao seu estado de migração `V2`.
+Ação de limpeza exclusiva de testes e avaliação do desafio técnico. Executa um drop/migrate no Flyway, limpando todas as informações, movimentos e saldos, voltando o sistema ao seu estado de migração `V2`.
+*(Nota: Este endpoint está propositalmente ativado em todos os profiles para facilitar o teste do avaliador no ambiente padrão Docker).*
 
 **`DELETE /dados`**
 - **Respostas**: `200 OK`
