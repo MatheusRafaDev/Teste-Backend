@@ -57,7 +57,7 @@ public class ResumoRepository {
         dto.setTicketMedioNaJanela(mediaBD.divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_EVEN));
 
         // estornosNaJanela
-        Integer estornos = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM transferencia WHERE estado = 'ESTORNADA' AND transferencia_original_id IS NULL AND concluida_em >= ?", Integer.class, fromTimestamp);
+        Integer estornos = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM transferencia WHERE transferencia_original_id IS NOT NULL AND estado = 'CONFIRMADA' AND criada_em >= ?", Integer.class, fromTimestamp);
         dto.setEstornosNaJanela(estornos != null ? estornos : 0);
 
         // somaDosMovimentosEhZero
