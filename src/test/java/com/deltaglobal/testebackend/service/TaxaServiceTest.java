@@ -1,8 +1,10 @@
 package com.deltaglobal.testebackend.service;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+@Tag("unit")
 class TaxaServiceTest {
 
     private final TaxaService taxaService = new TaxaService();

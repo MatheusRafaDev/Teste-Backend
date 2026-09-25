@@ -1,6 +1,7 @@
 package com.deltaglobal.testebackend;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -29,6 +31,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 
+@Tag("concorrencia")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers(disabledWithoutDocker = true)
 class ConcorrenciaTest {
@@ -61,8 +64,10 @@ class ConcorrenciaTest {
     void testA_to_B_and_B_to_A_Concurrency() throws Exception {
         int numThreads = 2;
         ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+        CyclicBarrier inicioSimultaneo = new CyclicBarrier(numThreads);
 
         Callable<ResponseEntity<String>> t1 = () -> {
+            inicioSimultaneo.await();
             HttpHeaders headers = new HttpHeaders();
             headers.set("Idempotency-Key", UUID.randomUUID().toString());
             String body = "{\"contaOrigem\":\"CONTA-001\", \"contaDestino\":\"CONTA-002\", \"valor\":100.00}";
@@ -70,6 +75,7 @@ class ConcorrenciaTest {
         };
 
         Callable<ResponseEntity<String>> t2 = () -> {
+            inicioSimultaneo.await();
             HttpHeaders headers = new HttpHeaders();
             headers.set("Idempotency-Key", UUID.randomUUID().toString());
             String body = "{\"contaOrigem\":\"CONTA-002\", \"contaDestino\":\"CONTA-001\", \"valor\":100.00}";
@@ -87,11 +93,13 @@ class ConcorrenciaTest {
     void testIdempotenciaConcorrente() throws Exception {
         int numThreads = 5;
         ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+        CyclicBarrier inicioSimultaneo = new CyclicBarrier(numThreads);
 
         String idempotencyKey = UUID.randomUUID().toString();
         String body = "{\"contaOrigem\":\"CONTA-003\", \"contaDestino\":\"CONTA-004\", \"valor\":50.00}";
 
         Callable<ResponseEntity<String>> task = () -> {
+            inicioSimultaneo.await();
             HttpHeaders headers = new HttpHeaders();
             headers.set("Idempotency-Key", idempotencyKey);
             headers.set("Content-Type", "application/json");
@@ -116,12 +124,16 @@ class ConcorrenciaTest {
 
         assertEquals(1, countCreated, "Apenas uma requisição deve criar");
         assertEquals(4, countOk, "As outras 4 devem retornar a resposta original com 200 OK");
+        assertEquals(1L, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM transferencia", Long.class));
+        assertEquals(2L, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM movimento WHERE transferencia_id IS NOT NULL", Long.class));
     }
 
     @Test
     void testEstornoConcorrenteSimultaneo() throws Exception {
         int numThreads = 5;
         ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+        CyclicBarrier inicioSimultaneo = new CyclicBarrier(numThreads);
 
         // 1. Criar uma transferência válida primeiro
         HttpHeaders headers = new HttpHeaders();
@@ -136,6 +148,7 @@ class ConcorrenciaTest {
         // 2. Estornar concorrentemente
         String estornoBody = "{\"motivo\":\"Estorno de teste\"}";
         Callable<ResponseEntity<String>> task = () -> {
+            inicioSimultaneo.await();
             HttpHeaders estornoHeaders = new HttpHeaders();
             estornoHeaders.set("Idempotency-Key", UUID.randomUUID().toString()); // chaves diferentes para forçar a concorrência na regra de negócio
             estornoHeaders.set("Content-Type", "application/json");
@@ -157,6 +170,11 @@ class ConcorrenciaTest {
             if (status == HttpStatus.CREATED) countCreated++;
             if (status == HttpStatus.CONFLICT) countConflict++;
         }
+        assertEquals(1L, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM transferencia WHERE transferencia_original_id IS NOT NULL", Long.class));
+        assertEquals(2L, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM movimento WHERE transferencia_id IN " +
+                        "(SELECT id FROM transferencia WHERE transferencia_original_id IS NOT NULL)", Long.class));
 
         assertEquals(1, countCreated, "Apenas um estorno deve ser efetuado");
         assertEquals(4, countConflict, "Os outros 4 devem falhar por estado inválido ou duplicidade");
@@ -166,6 +184,7 @@ class ConcorrenciaTest {
     void testLimiteDiarioConcorrenteEstourado() throws Exception {
         int numThreads = 2;
         ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+        CyclicBarrier inicioSimultaneo = new CyclicBarrier(numThreads);
 
         // O limite diário é 2000. Cada conta inicia com 1000. 
         // Vamos tentar duas transferências de 600 da CONTA-001 para a CONTA-002.
@@ -180,6 +199,7 @@ class ConcorrenciaTest {
         // Agora a conta tem 3000 de saldo, mas limite diário de 2000.
         // Duas threads vão tentar transferir 1200. Somadas (2400) estouram o limite de 2000.
         Callable<ResponseEntity<String>> task1 = () -> {
+            inicioSimultaneo.await();
             HttpHeaders headers = new HttpHeaders();
             headers.set("Idempotency-Key", UUID.randomUUID().toString());
             headers.set("Content-Type", "application/json");
@@ -188,6 +208,7 @@ class ConcorrenciaTest {
         };
 
         Callable<ResponseEntity<String>> task2 = () -> {
+            inicioSimultaneo.await();
             HttpHeaders headers = new HttpHeaders();
             headers.set("Idempotency-Key", UUID.randomUUID().toString());
             headers.set("Content-Type", "application/json");
@@ -214,6 +235,7 @@ class ConcorrenciaTest {
     void testIdempotenciaConcorrenteCorpoDiferente() throws Exception {
         int numThreads = 5;
         ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+        CyclicBarrier inicioSimultaneo = new CyclicBarrier(numThreads);
 
         String idempotencyKey = UUID.randomUUID().toString();
 
@@ -221,6 +243,7 @@ class ConcorrenciaTest {
         for (int i = 0; i < numThreads; i++) {
             final int index = i;
             tasks.add(() -> {
+                inicioSimultaneo.await();
                 HttpHeaders headers = new HttpHeaders();
                 headers.set("Idempotency-Key", idempotencyKey);
                 headers.set("Content-Type", "application/json");
@@ -257,8 +280,10 @@ class ConcorrenciaTest {
     void testConcorrenciaSaldoPuro_UmaVenceOutraPerde() throws Exception {
         int numThreads = 2;
         ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+        CyclicBarrier inicioSimultaneo = new CyclicBarrier(numThreads);
 
         Callable<ResponseEntity<String>> task = () -> {
+            inicioSimultaneo.await();
             HttpHeaders headers = new HttpHeaders();
             headers.set("Idempotency-Key", UUID.randomUUID().toString());
             headers.set("Content-Type", "application/json");

@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@org.springframework.context.annotation.Profile("dev")
 public class LogController {
 
     private final LogAuditoriaRepository logAuditoriaRepository;

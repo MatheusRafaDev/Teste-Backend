@@ -1,0 +1,1997 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Core Bancário — Painel de Gestão</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #06060f;
+            --surface-1: rgba(255,255,255,0.035);
+            --surface-2: rgba(255,255,255,0.065);
+            --surface-3: rgba(255,255,255,0.09);
+            --border: rgba(255,255,255,0.08);
+            --border-strong: rgba(255,255,255,0.14);
+            --primary: #7c3aed;
+            --primary-light: #a78bfa;
+            --primary-glow: rgba(124,58,237,0.25);
+            --accent: #06b6d4;
+            --accent-glow: rgba(6,182,212,0.2);
+            --success: #10b981;
+            --success-glow: rgba(16,185,129,0.2);
+            --warning: #f59e0b;
+            --warning-glow: rgba(245,158,11,0.2);
+            --danger: #ef4444;
+            --danger-glow: rgba(239,68,68,0.2);
+            --text: #f1f5f9;
+            --text-dim: #94a3b8;
+            --text-muted: #475569;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+        }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            width: 248px;
+            min-height: 100vh;
+            background: linear-gradient(180deg, rgba(124,58,237,0.05) 0%, var(--surface-1) 100%);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            flex-shrink: 0;
+        }
+
+        .sidebar-logo {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-logo .logo-icon {
+            width: 40px; height: 40px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem;
+            margin-bottom: 0.75rem;
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        .sidebar-logo h2 {
+            font-size: 1rem; font-weight: 700; color: var(--text);
+        }
+        .sidebar-logo span {
+            font-size: 0.72rem; color: var(--text-muted);
+            font-family: 'Fira Code', monospace;
+        }
+
+        .nav-section {
+            padding: 1rem 1.25rem 0.4rem;
+            font-size: 0.65rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1.5px;
+            color: var(--text-muted);
+        }
+
+        .nav-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 0.7rem 1.25rem;
+            color: var(--text-dim); cursor: pointer;
+            transition: all 0.18s; font-size: 0.88rem; font-weight: 500;
+            border-left: 2px solid transparent; margin: 1px 0;
+            border-radius: 0 8px 8px 0; margin-right: 0.75rem;
+        }
+        .nav-item:hover { background: var(--surface-2); color: var(--text); }
+        .nav-item.active {
+            background: rgba(124,58,237,0.12);
+            color: var(--primary-light);
+            border-left-color: var(--primary);
+        }
+        .nav-item .icon { font-size: 1rem; width: 20px; text-align: center; }
+
+        .sidebar-footer {
+            margin-top: auto; padding: 1rem 1.25rem;
+            border-top: 1px solid var(--border);
+        }
+        .api-status { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--text-dim); }
+        .status-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--success); box-shadow: 0 0 6px var(--success);
+            animation: pulse 2s infinite;
+        }
+        .status-dot.offline { background: var(--danger); box-shadow: 0 0 6px var(--danger); animation: none; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+        /* ===== MAIN ===== */
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+        .topbar {
+            padding: 1rem 1.75rem; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+            background: var(--surface-1); flex-shrink: 0;
+        }
+        .topbar h1 { font-size: 1.15rem; font-weight: 700; }
+        .topbar p { font-size: 0.8rem; color: var(--text-dim); margin-top: 1px; }
+        .topbar-actions { display: flex; gap: 0.6rem; align-items: center; }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            padding: 0.55rem 1.1rem; border-radius: 8px; border: none;
+            font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; transition: all 0.18s; display: inline-flex; align-items: center; gap: 6px;
+        }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: #6d28d9; transform: translateY(-1px); box-shadow: 0 4px 14px var(--primary-glow); }
+        .btn-ghost { background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--border); }
+        .btn-ghost:hover { color: var(--text); background: var(--surface-3); }
+        .btn-danger { background: rgba(239,68,68,0.12); color: var(--danger); border: 1px solid rgba(239,68,68,0.25); }
+        .btn-danger:hover { background: rgba(239,68,68,0.22); }
+        .btn-success { background: rgba(16,185,129,0.12); color: var(--success); border: 1px solid rgba(16,185,129,0.25); }
+        .btn-success:hover { background: rgba(16,185,129,0.22); }
+        .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.78rem; }
+
+        /* ===== PAGES ===== */
+        .page { display: none; flex: 1; overflow-y: auto; padding: 1.5rem 1.75rem; }
+        .page.active { display: block; }
+        .content-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* ===== STATS GRID ===== */
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        .stat-card {
+            background: var(--surface-1); border: 1px solid var(--border);
+            border-radius: 14px; padding: 1.25rem; position: relative; overflow: hidden;
+            transition: border-color 0.2s;
+        }
+        .stat-card:hover { border-color: var(--border-strong); }
+        .stat-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            opacity: 0;
+        }
+        .stat-card:hover::before { opacity: 1; }
+        .stat-label { font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.6rem; }
+        .stat-value { font-size: 1.75rem; font-weight: 800; line-height: 1; }
+        .stat-sub { font-size: 0.73rem; color: var(--text-muted); margin-top: 6px; }
+        .stat-icon { position: absolute; top: 1rem; right: 1rem; font-size: 1.5rem; opacity: 0.15; }
+
+        /* ===== SECTION HEADER ===== */
+        .section-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+        .section-title { font-size: 0.95rem; font-weight: 700; }
+
+        /* ===== TABLE ===== */
+        .table-container {
+            background: var(--surface-1); border: 1px solid var(--border);
+            border-radius: 14px; overflow-y: auto; max-height: calc(100vh - 220px);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+        th {
+            text-align: left; padding: 0.7rem 1rem;
+            font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.8px; color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+            background: var(--surface-1);
+            position: sticky; top: 0; z-index: 10;
+        }
+        td { padding: 0.8rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.035); vertical-align: middle; }
+        tr:hover td { background: rgba(255,255,255,0.025); }
+        tr:last-child td { border-bottom: none; }
+
+        /* ===== BADGES ===== */
+        .badge {
+            padding: 2px 9px; border-radius: 20px;
+            font-size: 0.7rem; font-weight: 700; display: inline-block; letter-spacing: 0.3px;
+        }
+        .badge-ativa { background: rgba(16,185,129,0.15); color: #34d399; }
+        .badge-bloqueada { background: rgba(245,158,11,0.15); color: #fbbf24; }
+        .badge-encerrada { background: rgba(239,68,68,0.12); color: #f87171; }
+        .badge-confirmada { background: rgba(16,185,129,0.15); color: #34d399; }
+        .badge-estornada { background: rgba(245,158,11,0.15); color: #fbbf24; }
+        .badge-falhada { background: rgba(239,68,68,0.12); color: #f87171; }
+        .badge-agendado { background: rgba(6,182,212,0.15); color: #22d3ee; }
+        .badge-concluido { background: rgba(16,185,129,0.15); color: #34d399; }
+        .badge-processando { background: rgba(124,58,237,0.15); color: #a78bfa; }
+        .badge-sistema { background: rgba(71,85,105,0.3); color: #94a3b8; }
+
+        .mono { font-family: 'Fira Code', monospace; font-size: 0.82rem; }
+
+        .action-btn {
+            background: var(--surface-2); border: 1px solid var(--border);
+            color: var(--text-dim); padding: 4px 10px; border-radius: 6px;
+            font-size: 0.75rem; cursor: pointer; transition: 0.18s;
+            font-family: 'Inter', sans-serif; font-weight: 500;
+            display: inline-flex; align-items: center; gap: 4px;
+        }
+        .action-btn:hover { color: var(--text); background: var(--surface-3); border-color: var(--border-strong); }
+
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
+            z-index: 1000; align-items: center; justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: #0d0d1c; border: 1px solid var(--border-strong);
+            border-radius: 18px; padding: 2rem; width: 100%; max-width: 480px;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+            animation: modalIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .modal.wide { max-width: 620px; }
+        @keyframes modalIn { from{opacity:0;transform:translateY(18px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+        .modal h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px; }
+        .form-group { margin-bottom: 1.1rem; }
+        label { display: block; font-size: 0.73rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        input, select, textarea {
+            width: 100%; background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+            border-radius: 8px; padding: 0.7rem 0.9rem; color: var(--text);
+            font-family: 'Inter', sans-serif; font-size: 0.9rem; transition: 0.18s; outline: none;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary); box-shadow: 0 0 0 3px rgba(124,58,237,0.15);
+        }
+        select option { background: #0d0d1c; }
+        .modal-footer { display: flex; gap: 0.65rem; justify-content: flex-end; margin-top: 1.5rem; }
+
+        /* ===== TOAST ===== */
+        .toast-container { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.6rem; }
+        .toast {
+            background: #12121f; border: 1px solid var(--border-strong);
+            border-radius: 12px; padding: 0.9rem 1.1rem; min-width: 280px; max-width: 380px;
+            display: flex; align-items: flex-start; gap: 10px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.6); animation: toastIn 0.25s ease-out;
+        }
+        @keyframes toastIn { from{opacity:0;transform:translateX(24px)} to{opacity:1;transform:translateX(0)} }
+        .toast-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+        .toast-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 2px; }
+        .toast-message { font-size: 0.78rem; color: var(--text-dim); font-family: 'Fira Code', monospace; line-height: 1.4; }
+        .toast.success { border-left: 3px solid var(--success); }
+        .toast.error { border-left: 3px solid var(--danger); }
+        .toast.info { border-left: 3px solid var(--accent); }
+
+        /* ===== LOG PANEL ===== */
+        .log-panel { background: #050510; border-top: 1px solid var(--border); height: 180px; display: flex; flex-direction: column; flex-shrink: 0; }
+        .log-header { padding: 0.45rem 1rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+        .log-title-small { font-size: 0.75rem; font-weight: 600; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+        .log-entries { flex: 1; overflow-y: auto; padding: 0.4rem 0.75rem; font-family: 'Fira Code', monospace; font-size: 0.73rem; }
+        .log-entries::-webkit-scrollbar { width: 3px; }
+        .log-entries::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        .log-line { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.015); display: flex; gap: 8px; align-items: baseline; }
+        .log-ts { color: var(--text-muted); flex-shrink: 0; font-size: 0.68rem; }
+        .log-method-GET { color: var(--accent); }
+        .log-method-POST { color: var(--success); }
+        .log-method-DELETE { color: var(--danger); }
+        .log-status-ok { color: var(--success); }
+        .log-status-err { color: var(--danger); }
+        .log-body { color: #64748b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+
+        /* ===== EXTRATO ===== */
+        .extrato-header { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.25rem; }
+        .info-box { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; }
+        .info-box-label { font-size: 0.68rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .info-box-value { font-size: 1.35rem; font-weight: 700; }
+        .filters { display: flex; gap: 0.65rem; margin-bottom: 1rem; align-items: flex-end; flex-wrap: wrap; }
+        .filters .form-group { margin: 0; flex: 1; min-width: 130px; }
+        .filters label { margin-bottom: 4px; }
+
+        /* ===== TAXA TABLE ===== */
+        .taxa-table-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.5rem; }
+        .rule-card {
+            background: var(--surface-1); border: 1px solid var(--border);
+            border-radius: 14px; padding: 1.25rem;
+        }
+        .rule-card h4 { font-size: 0.85rem; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+
+        /* ===== REGRAS VISUAIS ===== */
+        .rules-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        .rule-item {
+            background: var(--surface-1); border: 1px solid var(--border);
+            border-radius: 12px; padding: 1rem;
+        }
+        .rule-item .rule-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+        .rule-item h5 { font-size: 0.82rem; font-weight: 700; margin-bottom: 0.4rem; }
+        .rule-item p { font-size: 0.76rem; color: var(--text-dim); line-height: 1.5; }
+        .rule-item code { font-family: 'Fira Code', monospace; font-size: 0.78rem; background: rgba(255,255,255,0.07); padding: 1px 5px; border-radius: 4px; color: var(--primary-light); }
+
+        /* ===== FLOW DIAGRAM ===== */
+        .flow-row { display: flex; align-items: center; gap: 0; margin: 0.4rem 0; }
+        .flow-node {
+            padding: 5px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;
+            background: var(--surface-2); border: 1px solid var(--border);
+        }
+        .flow-arrow { color: var(--text-muted); font-size: 0.75rem; padding: 0 8px; }
+        .flow-node.start { background: rgba(16,185,129,0.15); color: var(--success); border-color: rgba(16,185,129,0.25); }
+        .flow-node.end-ok { background: rgba(16,185,129,0.15); color: var(--success); border-color: rgba(16,185,129,0.25); }
+        .flow-node.end-err { background: rgba(239,68,68,0.12); color: var(--danger); border-color: rgba(239,68,68,0.2); }
+        .flow-node.end-warn { background: rgba(245,158,11,0.12); color: var(--warning); border-color: rgba(245,158,11,0.2); }
+
+        /* ===== SCROLLBAR ===== */
+        .page::-webkit-scrollbar { width: 4px; }
+        .page::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        /* ===== LOADING ===== */
+        .loading { text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.85rem; }
+
+        /* ===== CONSISTENCY BAR ===== */
+        .consistency-bar {
+            display: flex; align-items: center; gap: 12px;
+            background: var(--surface-1); border: 1px solid var(--border);
+            border-radius: 12px; padding: 0.85rem 1.25rem; margin-bottom: 1.5rem;
+        }
+        .consistency-bar .cb-icon { font-size: 1.3rem; }
+        .consistency-bar .cb-text { flex: 1; }
+        .consistency-bar .cb-label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+        .consistency-bar .cb-value { font-size: 0.9rem; font-weight: 700; }
+
+        /* ===== RESUMO JANELA ===== */
+        .janela-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
+        .janela-card {
+            background: rgba(6,182,212,0.05); border: 1px solid rgba(6,182,212,0.15);
+            border-radius: 12px; padding: 1rem; text-align: center;
+        }
+        .janela-label { font-size: 0.68rem; color: var(--accent); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .janela-value { font-size: 1.4rem; font-weight: 800; color: var(--text); }
+    </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+    <div class="sidebar-logo">
+        <div class="logo-icon">🏦</div>
+        <h2>Core Bancário</h2>
+        <span>localhost:8080</span>
+    </div>
+    <div class="nav-section">Gestão</div>
+    <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+        <span class="icon">📊</span> Dashboard
+    </div>
+    <div class="nav-item" onclick="showPage('contas')" id="nav-contas">
+        <span class="icon">💳</span> Contas
+    </div>
+    <div class="nav-item" onclick="showPage('transferencias')" id="nav-transferencias">
+        <span class="icon">💸</span> Transferências
+    </div>
+    <div class="nav-item" onclick="showPage('agendamentos')" id="nav-agendamentos">
+        <span class="icon">🗓️</span> Agendamentos
+    </div>
+    <div class="nav-item" onclick="showPage('extrato')" id="nav-extrato">
+        <span class="icon">📜</span> Extrato
+    </div>
+    <div class="nav-section">Sistema</div>
+    <div class="nav-item" onclick="showPage('logs')" id="nav-logs">
+        <span class="icon">🗄️</span> Logs (Banco)
+    </div>
+    <div class="nav-item" onclick="showPage('regras')" id="nav-regras">
+        <span class="icon">📋</span> Regras & Taxas
+    </div>
+    <div class="nav-item" onclick="showPage('testes')" id="nav-testes">
+        <span class="icon">🧪</span> Testes E2E
+    </div>
+    <div class="nav-item" onclick="confirmReset()">
+        <span class="icon">🔥</span> Resetar Banco
+    </div>
+    <div class="sidebar-footer">
+        <div class="api-status">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">Verificando...</span>
+        </div>
+    </div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+    <!-- TOPBAR -->
+    <div class="topbar">
+        <div>
+            <h1 id="pageTitle">Dashboard</h1>
+            <p id="pageSubtitle">Visão geral e saúde do sistema</p>
+        </div>
+        <div class="topbar-actions" id="topbarActions"></div>
+    </div>
+
+    <div class="content-area">
+
+    <!-- PAGE: DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-label">Contas Ativas</div>
+                <div class="stat-value" id="dash-contas-ativas">—</div>
+                <div class="stat-sub">contas de usuário</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">💰</div>
+                <div class="stat-label">Saldo Total Usuários</div>
+                <div class="stat-value" style="color:var(--success)" id="dash-saldo-total">—</div>
+                <div class="stat-sub">em todas as contas</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">💸</div>
+                <div class="stat-label">Transferências (1h)</div>
+                <div class="stat-value" style="color:var(--accent)" id="dash-transferencias">—</div>
+                <div class="stat-sub" id="dash-valor-hora">na última hora</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⚖️</div>
+                <div class="stat-label">Consistência</div>
+                <div class="stat-value" id="dash-saldo-zero">—</div>
+                <div class="stat-sub">Σ movimentos = zero</div>
+            </div>
+        </div>
+
+        <!-- Janela de 1h -->
+        <div style="margin-bottom:0.75rem; display:flex; align-items:center; justify-content:space-between;">
+            <div class="section-title">📈 Métricas da Última Hora</div>
+            <button class="btn btn-ghost btn-sm" onclick="loadDashboard()">↻ Atualizar</button>
+        </div>
+        <div class="janela-grid" style="margin-bottom:1.5rem">
+            <div class="janela-card"><div class="janela-label">Transferências</div><div class="janela-value" id="j-transf">—</div></div>
+            <div class="janela-card"><div class="janela-label">Volume Transferido</div><div class="janela-value" id="j-vol" style="font-size:1.1rem">—</div></div>
+            <div class="janela-card"><div class="janela-label">Taxas Cobradas</div><div class="janela-value" id="j-tax" style="font-size:1.1rem">—</div></div>
+            <div class="janela-card"><div class="janela-label">Ticket Médio</div><div class="janela-value" id="j-ticket" style="font-size:1.1rem">—</div></div>
+        </div>
+
+        <div class="section-header">
+            <div class="section-title">💳 Estado das Contas</div>
+            <span style="font-size:0.75rem;color:var(--text-muted)" id="dash-agendamentos-label"></span>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead><tr>
+                    <th>Conta</th><th>Titular</th><th>Estado</th><th>Saldo Atual</th><th>Limite Diário</th><th>Ações</th>
+                </tr></thead>
+                <tbody id="dash-contas-table"><tr><td colspan="6" class="loading">Carregando...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- PAGE: CONTAS -->
+    <div class="page" id="page-contas">
+        <div class="table-container">
+            <table>
+                <thead><tr>
+                    <th>Número</th><th>Titular</th><th>CPF</th><th>Estado</th><th>Saldo Atual</th><th>Limite Diário</th><th>Ações</th>
+                </tr></thead>
+                <tbody id="contas-table"><tr><td colspan="7" class="loading">Carregando...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- PAGE: TRANSFERENCIAS -->
+    <div class="page" id="page-transferencias">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem">
+            <div class="stat-card">
+                <div class="stat-label">Total transferências carregadas</div>
+                <div class="stat-value" id="transf-count">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Volume total</div>
+                <div class="stat-value" style="color:var(--success)" id="transf-vol">—</div>
+            </div>
+        </div>
+        <div class="section-header">
+            <div class="section-title">Histórico de Transferências (todos os extratos)</div>
+            <div style="display:flex;gap:0.5rem">
+                <button class="btn btn-ghost btn-sm" onclick="loadTransferencias()">↻ Recarregar</button>
+                <button class="btn btn-primary btn-sm" onclick="openTransfModal()">+ Nova</button>
+            </div>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead><tr>
+                    <th>#</th><th>Conta</th><th>Tipo</th><th>Valor</th><th>Saldo Após</th><th>Data</th><th>Ações</th>
+                </tr></thead>
+                <tbody id="transf-table"><tr><td colspan="7" class="loading">Carregando extratos...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- PAGE: AGENDAMENTOS -->
+    <div class="page" id="page-agendamentos">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.25rem">
+            <div class="stat-card"><div class="stat-label">Agendados</div><div class="stat-value" style="color:var(--accent)" id="agend-count-agendado">—</div></div>
+            <div class="stat-card"><div class="stat-label">Concluídos</div><div class="stat-value" style="color:var(--success)" id="agend-count-concluido">—</div></div>
+            <div class="stat-card"><div class="stat-label">Falhados</div><div class="stat-value" style="color:var(--danger)" id="agend-count-falhado">—</div></div>
+        </div>
+        <div class="section-header">
+            <div class="section-title">Transferências Agendadas</div>
+            <div style="display:flex;gap:0.5rem">
+                <button class="btn btn-ghost btn-sm" onclick="loadAgendamentos()">↻ Recarregar</button>
+                <button class="btn btn-warning btn-sm" onclick="bulkAgendar()" id="btn-bulk-agendar" style="background:var(--warning);color:#000">⚡ Bulk Agendar (5m)</button>
+                <button class="btn btn-primary btn-sm" onclick="openAgendModal()">+ Agendar</button>
+            </div>
+        </div>
+        <div style="background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.15);border-radius:10px;padding:0.8rem 1rem;margin-bottom:1rem;font-size:0.8rem;color:var(--accent)">
+            ℹ️ O job de agendamento roda a cada <strong>10 segundos</strong> usando <code style="background:rgba(0,0,0,0.3);padding:1px 5px;border-radius:3px">SELECT FOR UPDATE SKIP LOCKED</code> — seguro para múltiplas instâncias simultâneas.
+        </div>
+        <div class="table-container">
+            <table>
+                <thead><tr>
+                    <th>ID</th><th>Origem</th><th>Destino</th><th>Valor</th><th>Estado</th><th>Executar Em</th><th>Tentativas</th><th>Transferência</th><th>Ações</th>
+                </tr></thead>
+                <tbody id="agend-table"><tr><td colspan="9" class="loading">Carregando...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- PAGE: EXTRATO -->
+    <div class="page" id="page-extrato">
+        <div class="filters">
+            <div class="form-group">
+                <label>Conta</label>
+                <select id="extrato-conta" onchange="loadExtrato()"></select>
+            </div>
+            <div class="form-group">
+                <label>De</label>
+                <input type="datetime-local" id="extrato-de">
+            </div>
+            <div class="form-group">
+                <label>Até</label>
+                <input type="datetime-local" id="extrato-ate">
+            </div>
+            <button class="btn btn-primary" onclick="loadExtrato()">🔍 Buscar</button>
+        </div>
+        <div class="extrato-header" id="extrato-stats" style="display:none">
+            <div class="info-box">
+                <div class="info-box-label">Conta</div>
+                <div class="info-box-value mono" id="ext-numero">—</div>
+            </div>
+            <div class="info-box">
+                <div class="info-box-label">Saldo Atual</div>
+                <div class="info-box-value" style="color:var(--success)" id="ext-saldo">—</div>
+            </div>
+            <div class="info-box">
+                <div class="info-box-label">Movimentos (página)</div>
+                <div class="info-box-value" id="ext-total">—</div>
+            </div>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead><tr>
+                    <th>Seq</th><th>Tipo</th><th>Valor</th><th>Saldo Após</th><th>Data</th>
+                </tr></thead>
+                <tbody id="extrato-table"><tr><td colspan="5" class="loading">Selecione uma conta acima</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- PAGE: REGRAS -->
+    <div class="page" id="page-regras">
+        <!-- Taxa de Transferência -->
+        <div class="taxa-table-wrap">
+            <div class="rule-card">
+                <h4>🧮 Tabela de Taxas de Transferência</h4>
+                <table>
+                    <thead><tr><th>Valor Transferido</th><th>Taxa Cobrada</th><th>Regra</th></tr></thead>
+                    <tbody>
+                        <tr><td class="mono">R$ 10,00</td><td class="mono" style="color:var(--success)">R$ 0,00</td><td style="font-size:0.75rem;color:var(--text-muted)">Isento (≤ R$100)</td></tr>
+                        <tr><td class="mono">R$ 100,00</td><td class="mono" style="color:var(--success)">R$ 0,00</td><td style="font-size:0.75rem;color:var(--text-muted)">Isento (≤ R$100)</td></tr>
+                        <tr><td class="mono">R$ 100,01</td><td class="mono" style="color:var(--warning)">R$ 1,00</td><td style="font-size:0.75rem;color:var(--text-muted)">Mínimo aplicado</td></tr>
+                        <tr><td class="mono">R$ 112,50</td><td class="mono" style="color:var(--warning)">R$ 1,13</td><td style="font-size:0.75rem;color:var(--text-muted)">1% = R$1,125 → arredonda</td></tr>
+                        <tr><td class="mono">R$ 150,00</td><td class="mono" style="color:var(--warning)">R$ 1,50</td><td style="font-size:0.75rem;color:var(--text-muted)">1% do valor</td></tr>
+                        <tr><td class="mono">R$ 1.234,56</td><td class="mono" style="color:var(--warning)">R$ 12,35</td><td style="font-size:0.75rem;color:var(--text-muted)">1% do valor</td></tr>
+                        <tr><td class="mono">R$ 2.000,00</td><td class="mono" style="color:var(--danger)">R$ 20,00</td><td style="font-size:0.75rem;color:var(--text-muted)">Teto atingido</td></tr>
+                        <tr><td class="mono">R$ 5.000,00</td><td class="mono" style="color:var(--danger)">R$ 20,00</td><td style="font-size:0.75rem;color:var(--text-muted)">Teto aplicado (cap)</td></tr>
+                    </tbody>
+                </table>
+                <div style="margin-top:1rem;padding:0.75rem;background:rgba(255,255,255,0.03);border-radius:8px;font-size:0.75rem;color:var(--text-dim)">
+                    <strong style="color:var(--text)">Fórmula:</strong> taxa = 1% do valor, mín R$1,00, teto R$20,00. Isenção total para valores ≤ R$100,00.
+                    Arredondamento: <code style="color:var(--primary-light)">HALF_UP</code> (0,5 centavo arredonda para cima).
+                </div>
+            </div>
+
+            <div class="rule-card">
+                <h4>🔄 Fluxos de Estado</h4>
+                <div style="margin-bottom:1rem">
+                    <div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:0.5rem">Conta</div>
+                    <div class="flow-row"><div class="flow-node start">ATIVA</div><div class="flow-arrow">→ bloqueio →</div><div class="flow-node end-warn">BLOQUEADA</div></div>
+                    <div class="flow-row" style="margin-left:20px"><div class="flow-arrow">↑ desbloqueio ↑</div></div>
+                    <div class="flow-row"><div class="flow-node start">ATIVA</div><div class="flow-arrow">→ encerramento →</div><div class="flow-node end-err">ENCERRADA</div></div>
+                    <div class="flow-row"><div class="flow-node end-warn">BLOQUEADA</div><div class="flow-arrow">→ encerramento →</div><div class="flow-node end-err">ENCERRADA</div></div>
+                    <div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px">ENCERRADA é estado final — sem saída.</div>
+                </div>
+                <div style="margin-bottom:1rem">
+                    <div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:0.5rem">Transferência</div>
+                    <div class="flow-row"><div class="flow-node start">CRIADA</div><div class="flow-arrow">→</div><div class="flow-node end-ok">CONFIRMADA</div><div class="flow-arrow">→ estorno →</div><div class="flow-node end-warn">ESTORNADA</div></div>
+                    <div class="flow-row"><div class="flow-node start">CRIADA</div><div class="flow-arrow">→</div><div class="flow-node end-err">FALHADA</div></div>
+                </div>
+                <div>
+                    <div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:0.5rem">Agendamento</div>
+                    <div class="flow-row"><div class="flow-node start">AGENDADO</div><div class="flow-arrow">→</div><div class="flow-node" style="background:rgba(124,58,237,0.15);color:#a78bfa;border-color:rgba(124,58,237,0.25)">PROCESSANDO</div><div class="flow-arrow">→</div><div class="flow-node end-ok">CONCLUIDO</div></div>
+                    <div class="flow-row" style="margin-left:88px"><div class="flow-arrow">→ falha regra →</div><div class="flow-node end-err">FALHADO</div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Regras de Negócio -->
+        <div class="section-header"><div class="section-title">⚙️ Regras de Negócio</div></div>
+        <div class="rules-grid">
+            <div class="rule-item">
+                <div class="rule-icon">💵</div>
+                <h5>Valores em Centavos</h5>
+                <p>Todos os valores monetários são armazenados como <code>BIGINT</code> em centavos. <code>float</code> e <code>double</code> são proibidos nos cálculos. A API recebe e devolve em reais com 2 casas decimais.</p>
+            </div>
+            <div class="rule-item">
+                <div class="rule-icon">📅</div>
+                <h5>Limite Diário</h5>
+                <p>Cada conta tem limite de <strong>saída acumulada por dia</strong> (padrão R$2.000,00). O dia é contado das 00h às 23:59:59 no fuso <code>America/Sao_Paulo</code>. Calculado via <code>SUM</code> no banco.</p>
+            </div>
+            <div class="rule-item">
+                <div class="rule-icon">🔒</div>
+                <h5>Concorrência — Lock Pessimista</h5>
+                <p>Transferências usam <code>SELECT FOR UPDATE</code> em ambas as contas em ordem crescente de UUID. Isso elimina deadlocks em transferências cruzadas (A→B e B→A simultâneas).</p>
+            </div>
+            <div class="rule-item">
+                <div class="rule-icon">📜</div>
+                <h5>Extrato Imutável</h5>
+                <p>Toda mudança de saldo gera um <code>movimento</code>. Triggers no banco bloqueiam <code>UPDATE</code> e <code>DELETE</code> na tabela <code>movimento</code>. A sequência é única por conta sem buracos.</p>
+            </div>
+            <div class="rule-item">
+                <div class="rule-icon">🗝️</div>
+                <h5>Idempotência</h5>
+                <p>Header <code>Idempotency-Key</code> é obrigatório em todos os endpoints que movem dinheiro. A chave é gravada <strong>na mesma transação</strong>. Race condition resolvida via <code>UNIQUE</code> no banco.</p>
+            </div>
+            <div class="rule-item">
+                <div class="rule-icon">↩️</div>
+                <h5>Estorno</h5>
+                <p>Só transferências <code>CONFIRMADA</code> podem ser estornadas. O estorno é uma transferência nova no sentido inverso. A taxa também é devolvida. Estorno sem saldo é <strong>recusado</strong> (decisão do dev).</p>
+            </div>
+            <div class="rule-item">
+                <div class="rule-icon">🏦</div>
+                <h5>Contas do Sistema</h5>
+                <p><code>SISTEMA-ENTRADA</code> fornece dinheiro para depósitos e pode ter saldo negativo. <code>SISTEMA-TAXAS</code> recebe as taxas. Toda saída tem entrada correspondente em outra conta.</p>
+            </div>
+            <div class="rule-item">
+                <div class="rule-icon">🚀</div>
+                <h5>Job Multi-Instância</h5>
+                <p>O job de agendamentos usa <code>SELECT FOR UPDATE SKIP LOCKED</code> — duas instâncias da API nunca processam o mesmo agendamento. Roda a cada 10 segundos automaticamente.</p>
+            </div>
+            <div class="rule-item">
+                <div class="rule-icon">⚖️</div>
+                <h5>Invariante de Saldo</h5>
+                <p>A soma de todos os movimentos de <strong>todas</strong> as contas (incluindo sistema) deve ser sempre <strong>zero</strong>. Cada real que sai de uma conta entra em outra. <code>somaDosMovimentosEhZero</code> monitora isso.</p>
+            </div>
+        </div>
+
+        <!-- Contas iniciais -->
+        <div class="section-header"><div class="section-title">🏁 Carga Inicial (migration V2)</div></div>
+        <div class="table-container" style="margin-bottom:1.5rem">
+            <table>
+                <thead><tr><th>Conta</th><th>Titular</th><th>Estado</th><th>Saldo Inicial</th><th>Limite Diário</th><th>Observação</th></tr></thead>
+                <tbody>
+                    <tr><td class="mono">SISTEMA-ENTRADA</td><td style="color:var(--text-muted)">Sistema</td><td><span class="badge badge-sistema">SISTEMA</span></td><td class="mono" style="color:var(--danger)">R$ -5.300,00</td><td style="color:var(--text-muted)">—</td><td style="font-size:0.75rem;color:var(--text-muted)">Saldo negativo é correto (carga inicial)</td></tr>
+                    <tr><td class="mono">SISTEMA-TAXAS</td><td style="color:var(--text-muted)">Sistema</td><td><span class="badge badge-sistema">SISTEMA</span></td><td class="mono">R$ 0,00</td><td style="color:var(--text-muted)">—</td><td style="font-size:0.75rem;color:var(--text-muted)">Recebe taxas de transferências</td></tr>
+                    <tr><td class="mono">CONTA-001 a 005</td><td>5 Usuários</td><td><span class="badge badge-ativa">ATIVA</span></td><td class="mono" style="color:var(--success)">R$ 1.000,00</td><td class="mono">R$ 2.000,00</td><td style="font-size:0.75rem;color:var(--text-muted)">Saldo inicial com movimentos gerados</td></tr>
+                    <tr><td class="mono">CONTA-006</td><td>User Blocked</td><td><span class="badge badge-bloqueada">BLOQUEADA</span></td><td class="mono" style="color:var(--success)">R$ 300,00</td><td class="mono">R$ 2.000,00</td><td style="font-size:0.75rem;color:var(--text-muted)">Pode receber, não pode enviar</td></tr>
+                    <tr><td class="mono">CONTA-007</td><td>User Closed</td><td><span class="badge badge-encerrada">ENCERRADA</span></td><td class="mono">R$ 0,00</td><td class="mono">R$ 2.000,00</td><td style="font-size:0.75rem;color:var(--text-muted)">Estado final — não recebe nem envia</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Calculadora de taxa ao vivo -->
+        <div class="section-header"><div class="section-title">🧮 Calculadora de Taxa (ao vivo)</div></div>
+        <div style="background:var(--surface-1);border:1px solid var(--border);border-radius:14px;padding:1.5rem">
+            <div style="display:flex;gap:1rem;align-items:flex-end">
+                <div class="form-group" style="margin:0;flex:1">
+                    <label>Valor da Transferência (R$)</label>
+                    <input type="number" id="calc-valor" step="0.01" min="0" placeholder="Ex: 150.00" oninput="calcTaxa()">
+                </div>
+                <div style="flex:1">
+                    <div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:0.5rem">Taxa Calculada</div>
+                    <div id="calc-taxa" style="font-size:2rem;font-weight:800;color:var(--warning)">—</div>
+                </div>
+                <div style="flex:1">
+                    <div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:0.5rem">Total Debitado</div>
+                    <div id="calc-total" style="font-size:2rem;font-weight:800;color:var(--danger)">—</div>
+                </div>
+            </div>
+            <div id="calc-rule" style="margin-top:0.75rem;font-size:0.8rem;color:var(--text-muted)">Digite um valor acima para calcular a taxa.</div>
+        </div>
+    </div>
+
+    <!-- PAGE: TESTES E2E -->
+    <div class="page" id="page-testes">
+        <div class="section-header">
+            <div class="section-title">🧪 Suite de Testes End-to-End</div>
+            <div style="display:flex;gap:0.5rem">
+                <button class="btn btn-danger" onclick="confirmReset()" id="btn-reset-banco" title="Apaga transferências e restaura saldos iniciais">♻️ Resetar Banco</button>
+                <button class="btn btn-warning" onclick="runStressTest()" id="btn-stress-test" style="background:var(--warning);color:#000;border:none">🔥 Teste de Carga (Stress)</button>
+                <button class="btn btn-primary" onclick="runTestSuite()" id="btn-run-tests">▶️ Rodar Testes Completos</button>
+            </div>
+        </div>
+
+        
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.5rem">
+            <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:1.5rem">Use <strong>Executar</strong> para rodar um cenário isoladamente ou rode a suíte completa. <strong>O banco não é resetado automaticamente</strong> — use o botão <em>Resetar Banco</em> na barra superior quando quiser partir do estado inicial. O Console HTTP lista as requisições e o painel abaixo mostra cada resultado.</p>
+            
+            <div id="test-results" style="display:flex;flex-direction:column;gap:0.6rem;">
+                <!-- test-saldo -->
+                <div class="test-wrapper" id="test-saldo-wrapper">
+                    <div class="test-row" id="test-saldo"><span class="icon">⏳</span><span class="test-label">Validação de Saldo Insuficiente (422)</span><button type="button" class="action-btn test-run" onclick="runSingleTest('test-saldo')">Executar</button></div>
+                    <div class="test-detail" id="test-saldo-detail"></div>
+                </div>
+                <!-- test-sucesso -->
+                <div class="test-wrapper" id="test-sucesso-wrapper">
+                    <div class="test-row" id="test-sucesso"><span class="icon">⏳</span><span class="test-label">Transferência com Sucesso &amp; Cobrança de Taxa (201)</span><button type="button" class="action-btn test-run" onclick="runSingleTest('test-sucesso')">Executar</button></div>
+                    <div class="test-detail" id="test-sucesso-detail"></div>
+                </div>
+                <!-- test-idempotencia -->
+                <div class="test-wrapper" id="test-idempotencia-wrapper">
+                    <div class="test-row" id="test-idempotencia"><span class="icon">⏳</span><span class="test-label">Proteção de Idempotência - Repetição (200) e Conflito (409)</span><button type="button" class="action-btn test-run" onclick="runSingleTest('test-idempotencia')">Executar</button></div>
+                    <div class="test-detail" id="test-idempotencia-detail"></div>
+                </div>
+                <!-- test-limite -->
+                <div class="test-wrapper" id="test-limite-wrapper">
+                    <div class="test-row" id="test-limite"><span class="icon">⏳</span><span class="test-label">Bloqueio por Limite Diário Excedido (422)</span><button type="button" class="action-btn test-run" onclick="runSingleTest('test-limite')">Executar</button></div>
+                    <div class="test-detail" id="test-limite-detail"></div>
+                </div>
+                <!-- test-estorno -->
+                <div class="test-wrapper" id="test-estorno-wrapper">
+                    <div class="test-row" id="test-estorno"><span class="icon">⏳</span><span class="test-label">Estorno de Transferência &amp; Reembolso da Taxa (201)</span><button type="button" class="action-btn test-run" onclick="runSingleTest('test-estorno')">Executar</button></div>
+                    <div class="test-detail" id="test-estorno-detail"></div>
+                </div>
+                <!-- test-estorno-duplo -->
+                <div class="test-wrapper" id="test-estorno-duplo-wrapper">
+                    <div class="test-row" id="test-estorno-duplo"><span class="icon">⏳</span><span class="test-label">Bloqueio de Estorno Duplicado (409)</span><button type="button" class="action-btn test-run" onclick="runSingleTest('test-estorno-duplo')">Executar</button></div>
+                    <div class="test-detail" id="test-estorno-duplo-detail"></div>
+                </div>
+                <!-- test-agendamento -->
+                <div class="test-wrapper" id="test-agendamento-wrapper">
+                    <div class="test-row" id="test-agendamento"><span class="icon">⏳</span><span class="test-label">Criação de Agendamento Futuro (201)</span><button type="button" class="action-btn test-run" onclick="runSingleTest('test-agendamento')">Executar</button></div>
+                    <div class="test-detail" id="test-agendamento-detail"></div>
+                </div>
+                <!-- test-data-passada -->
+                <div class="test-wrapper" id="test-data-passada-wrapper">
+                    <div class="test-row" id="test-data-passada"><span class="icon">⏳</span><span class="test-label">Validação de Data no Passado (422)</span><button type="button" class="action-btn test-run" onclick="runSingleTest('test-data-passada')">Executar</button></div>
+                    <div class="test-detail" id="test-data-passada-detail"></div>
+                </div>
+                <!-- test-conta-inexistente -->
+                <div class="test-wrapper" id="test-conta-inexistente-wrapper">
+                    <div class="test-row" id="test-conta-inexistente"><span class="icon">⏳</span><span class="test-label">Validação de Conta Inexistente (404)</span><button type="button" class="action-btn test-run" onclick="runSingleTest('test-conta-inexistente')">Executar</button></div>
+                    <div class="test-detail" id="test-conta-inexistente-detail"></div>
+                </div>
+                <!-- test-contas-iguais -->
+                <div class="test-wrapper" id="test-contas-iguais-wrapper">
+                    <div class="test-row" id="test-contas-iguais"><span class="icon">⏳</span><span class="test-label">Bloqueio de Transferência para Mesma Conta (409)</span><button type="button" class="action-btn test-run" onclick="runSingleTest('test-contas-iguais')">Executar</button></div>
+                    <div class="test-detail" id="test-contas-iguais-detail"></div>
+                </div>
+                <!-- test-conta-bloqueada -->
+                <div class="test-wrapper" id="test-conta-bloqueada-wrapper">
+                    <div class="test-row" id="test-conta-bloqueada"><span class="icon">⏳</span><span class="test-label">Bloqueio de Conta Origem Bloqueada (409)</span><button type="button" class="action-btn test-run" onclick="runSingleTest('test-conta-bloqueada')">Executar</button></div>
+                    <div class="test-detail" id="test-conta-bloqueada-detail"></div>
+                </div>
+                <!-- test-conta-encerrada -->
+                <div class="test-wrapper" id="test-conta-encerrada-wrapper">
+                    <div class="test-row" id="test-conta-encerrada"><span class="icon">⏳</span><span class="test-label">Bloqueio de Conta Destino Encerrada (409)</span><button type="button" class="action-btn test-run" onclick="runSingleTest('test-conta-encerrada')">Executar</button></div>
+                    <div class="test-detail" id="test-conta-encerrada-detail"></div>
+                </div>
+            </div>
+        </div>
+        
+        <style>
+            .test-wrapper { display: flex; flex-direction: column; }
+            .test-row { background: var(--surface-1); padding: 0.8rem 1rem; border-radius: 8px 8px 0 0; border: 1px solid var(--border); font-size: 0.85rem; display: flex; align-items: center; gap: 10px; transition: 0.3s; }
+            .test-wrapper:has(.test-detail:empty) .test-row { border-radius: 8px; }
+            .test-row.running { border-color: var(--primary); background: rgba(124,58,237,0.1); }
+            .test-row.success { border-color: var(--success); background: rgba(16,185,129,0.08); }
+            .test-row.error { border-color: var(--danger); background: rgba(239,68,68,0.08); }
+            .test-row .test-label { flex: 1; }
+            .test-row .test-run { margin-left: auto; flex-shrink: 0; }
+            .test-row .test-run:disabled { cursor: not-allowed; opacity: 0.55; }
+            .test-row.success .icon { color: var(--success); font-weight: bold; }
+            .test-row.error .icon { color: var(--danger); font-weight: bold; }
+            .test-row.running .icon { animation: spin 1s linear infinite; }
+            @keyframes spin { 100% { transform: rotate(360deg); } }
+
+            .test-detail { display: flex; flex-direction: column; gap: 4px;
+                background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-top: none;
+                border-radius: 0 0 8px 8px; padding: 0;
+                font-family: 'Fira Code', monospace; font-size: 0.76rem;
+                overflow: hidden; max-height: 0; transition: max-height 0.35s ease, padding 0.25s ease; }
+            .test-detail.has-content { max-height: 600px; padding: 0.6rem 0.85rem; }
+            .test-detail-entry { display: flex; align-items: baseline; gap: 8px; padding: 3px 0;
+                border-bottom: 1px solid rgba(255,255,255,0.04); }
+            .test-detail-entry:last-child { border-bottom: none; }
+            .td-step { color: var(--text-muted); font-size: 0.68rem; flex-shrink: 0; min-width: 28px; }
+            .td-method { color: var(--accent); font-size: 0.72rem; flex-shrink: 0; min-width: 36px; }
+            .td-path { color: var(--text-dim); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .td-status { flex-shrink: 0; padding: 1px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; }
+            .td-status.ok  { background: rgba(16,185,129,0.15); color: #34d399; }
+            .td-status.warn { background: rgba(245,158,11,0.15); color: #fbbf24; }
+            .td-status.err { background: rgba(239,68,68,0.13); color: #f87171; }
+            .td-code { color: var(--text-muted); font-size: 0.7rem; flex-shrink: 0; }
+            .td-msg { color: #94a3b8; font-size: 0.7rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+            .td-extra { color: var(--success); font-size: 0.7rem; flex-shrink: 0; }
+        </style>
+    </div>
+
+    <!-- PAGE: LOGS -->
+    <div class="page" id="page-logs">
+        <div class="section-header">
+            <div class="section-title">🗄️ Tabela de Logs (Auditoria)</div>
+            <button class="btn btn-ghost" onclick="loadLogsBanco()">↻ Atualizar</button>
+        </div>
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Método</th>
+                        <th>Endpoint</th>
+                        <th>Detalhes</th>
+                        <th>Status</th>
+                        <th>Duração</th>
+                        <th>Data/Hora</th>
+                    </tr>
+                </thead>
+                <tbody id="logs-banco-table"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- LOG PANEL -->
+    <div class="log-panel">
+        <div class="log-header">
+            <div class="log-title-small">
+                <span style="color:var(--success)">●</span> Console HTTP
+            </div>
+            <div style="display:flex;gap:0.5rem">
+                <span id="log-count" style="font-size:0.72rem;color:var(--text-muted)">0 requests</span>
+                <button class="action-btn" onclick="document.getElementById('log-entries').innerHTML='';logCount=0;document.getElementById('log-count').textContent='0 requests'">Limpar</button>
+            </div>
+        </div>
+        <div class="log-entries" id="log-entries"></div>
+    </div>
+
+    </div><!-- content-area -->
+</div><!-- main -->
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-transf">
+    <div class="modal">
+        <h3>💸 Nova Transferência</h3>
+        <div class="form-group">
+            <label>Conta de Origem</label>
+            <select id="transf-origem" onchange="previewTaxa()"></select>
+        </div>
+        <div class="form-group">
+            <label>Conta de Destino</label>
+            <select id="transf-destino"></select>
+        </div>
+        <div class="form-group">
+            <label>Valor (R$)</label>
+            <input type="number" id="transf-valor" step="0.01" min="0.01" placeholder="0.00" oninput="previewTaxa()">
+        </div>
+        <div id="transf-preview" style="display:none;background:rgba(255,255,255,0.04);border-radius:8px;padding:0.75rem;font-size:0.8rem;margin-bottom:0.5rem">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <span style="color:var(--text-muted)">Taxa estimada:</span>
+                <span id="prev-taxa" style="color:var(--warning);font-weight:700"></span>
+            </div>
+            <div style="display:flex;justify-content:space-between">
+                <span style="color:var(--text-muted)">Total debitado:</span>
+                <span id="prev-total" style="color:var(--danger);font-weight:700"></span>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal('modal-transf')">Cancelar</button>
+            <button class="btn btn-primary" onclick="realizarTransferencia()">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-estorno">
+    <div class="modal">
+        <h3>↩️ Solicitar Estorno</h3>
+        <div class="form-group">
+            <label>Conta · Tipo · Valor</label>
+            <input type="text" id="estorno-info" class="mono" readonly style="color:var(--text-dim)">
+        </div>
+        <div class="form-group">
+            <label>ID da Transferência (origem do movimento)</label>
+            <input type="text" id="estorno-id" class="mono" placeholder="UUID" readonly>
+        </div>
+        <div class="form-group">
+            <label>Motivo</label>
+            <textarea id="estorno-motivo" rows="2" placeholder="Descreva o motivo..."></textarea>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal('modal-estorno')">Cancelar</button>
+            <button class="btn btn-danger" onclick="realizarEstorno()">↩️ Estornar</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-deposito">
+    <div class="modal">
+        <h3>💰 Depositar</h3>
+        <div class="form-group">
+            <label>Conta</label>
+            <input type="text" id="dep-conta" class="mono" readonly>
+        </div>
+        <div class="form-group">
+            <label>Valor (R$) — máx R$10.000,00</label>
+            <input type="number" id="dep-valor" step="0.01" min="0.01" max="10000" placeholder="0.00">
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal('modal-deposito')">Cancelar</button>
+            <button class="btn btn-success" onclick="realizarDeposito()">💰 Depositar</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-agend">
+    <div class="modal">
+        <h3>🗓️ Agendar Transferência</h3>
+        <div class="form-group">
+            <label>Conta de Origem</label>
+            <select id="agend-origem"></select>
+        </div>
+        <div class="form-group">
+            <label>Conta de Destino</label>
+            <select id="agend-destino"></select>
+        </div>
+        <div class="form-group">
+            <label>Valor (R$)</label>
+            <input type="number" id="agend-valor" step="0.01" min="0.01" placeholder="0.00">
+        </div>
+        <div class="form-group">
+            <label>Executar Em</label>
+            <input type="datetime-local" id="agend-data">
+        </div>
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:-0.5rem;margin-bottom:0.5rem">
+            ℹ️ Saldo e limite são verificados <strong>na hora da execução</strong>, não agora.
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal('modal-agend')">Cancelar</button>
+            <button class="btn btn-primary" onclick="criarAgendamento()">🗓️ Agendar</button>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toasts"></div>
+
+<script>
+    const API = 'http://localhost:8080';
+    let contasList = [];
+    let allMovimentos = []; // cache dos movimentos de todos os extratos
+    let logCount = 0;
+    let e2eRunning = false;
+
+    // ===== UTILS =====
+    const uuid = () => crypto.randomUUID();
+    const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v ?? 0);
+    const ts = () => new Date().toLocaleTimeString('pt-BR');
+    const shortId = (id) => id ? id.substring(0, 8) + '…' : '—';
+
+    // ===== API =====
+    async function api(method, path, body = null, key = null) {
+        const headers = { 'Content-Type': 'application/json' };
+        if (key) headers['Idempotency-Key'] = key;
+        const opts = { method, headers };
+        if (body) opts.body = JSON.stringify(body);
+        const start = Date.now();
+        let status = 0, data = null;
+        try {
+            const res = await fetch(`${API}${path}`, opts);
+            status = res.status;
+            const isJson = res.headers.get('content-type')?.includes('json');
+            data = isJson ? await res.json() : await res.text();
+        } catch (e) {
+            data = { error: e.message };
+            status = 0;
+        }
+        const ms = Date.now() - start;
+        appendLog(method, path, status, ms, data);
+        return { status, data };
+    }
+
+    // ===== LOG =====
+    function appendLog(method, path, status, ms, data) {
+        logCount++;
+        document.getElementById('log-count').textContent = `${logCount} requests`;
+        const el = document.getElementById('log-entries');
+        const statusClass = status >= 200 && status < 300 ? 'log-status-ok' : 'log-status-err';
+        const body = typeof data === 'object' ? JSON.stringify(data).substring(0, 150) : String(data).substring(0, 150);
+        el.insertAdjacentHTML('beforeend', `
+            <div class="log-line">
+                <span class="log-ts">${ts()}</span>
+                <span class="log-method-${method}">${method}</span>
+                <span style="color:#cbd5e1">${path}</span>
+                <span class="${statusClass}">${status || 'ERR'}</span>
+                <span style="color:var(--text-muted)">${ms}ms</span>
+                <span class="log-body">${body}</span>
+            </div>
+        `);
+        el.scrollTop = el.scrollHeight;
+    }
+
+    // ===== TOAST =====
+    function toast(type, title, message) {
+        const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+        const el = document.createElement('div');
+        el.className = `toast ${type}`;
+        el.innerHTML = `<span class="toast-icon">${icons[type]}</span>
+            <div><div class="toast-title">${title}</div><div class="toast-message">${message}</div></div>`;
+        document.getElementById('toasts').appendChild(el);
+        setTimeout(() => el.remove(), 5000);
+    }
+
+    // ===== NAVIGATION =====
+    const pageMeta = {
+        dashboard:      { title: 'Dashboard',      subtitle: 'Visão geral e saúde do sistema' },
+        contas:         { title: 'Contas',          subtitle: 'Estado de todas as contas (usuários + sistema)' },
+        transferencias: { title: 'Transferências',  subtitle: 'Todos os movimentos carregados dos extratos' },
+        agendamentos:   { title: 'Agendamentos',    subtitle: 'Transferências programadas e estado do job' },
+        extrato:        { title: 'Extrato',         subtitle: 'Movimentos detalhados por conta' },
+        logs:           { title: 'Logs de Auditoria',subtitle: 'Registro imutável das requisições no Banco de Dados' },
+        regras:         { title: 'Regras & Taxas',  subtitle: 'Documentação do sistema e calculadora de taxa' },
+    };
+
+    function showPage(id) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.getElementById(`page-${id}`)?.classList.add('active');
+        document.getElementById(`nav-${id}`)?.classList.add('active');
+        const meta = pageMeta[id];
+        if (meta) {
+            document.getElementById('pageTitle').textContent = meta.title;
+            document.getElementById('pageSubtitle').textContent = meta.subtitle;
+        }
+        const actions = document.getElementById('topbarActions');
+        actions.innerHTML = '';
+        if (id === 'transferencias') {
+            actions.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="loadTransferencias()">↻ Recarregar</button>
+                                 <button class="btn btn-primary btn-sm" onclick="openTransfModal()">+ Nova Transferência</button>`;
+        }
+        if (id === 'agendamentos') {
+            actions.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="loadAgendamentos()">↻ Recarregar</button>
+                                 <button class="btn btn-primary btn-sm" onclick="openAgendModal()">+ Agendar</button>`;
+        }
+        if (id === 'dashboard') loadDashboard();
+        if (id === 'contas') loadContas();
+        if (id === 'transferencias') loadTransferencias();
+        if (id === 'agendamentos') loadAgendamentos();
+        if (id === 'logs') loadLogsBanco();
+        if (id === 'extrato') { populateExtratoSelect(); loadExtrato(); }
+    }
+
+    // ===== MODALS =====
+    function openModal(id) { document.getElementById(id).classList.add('open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+    document.querySelectorAll('.modal-overlay').forEach(m => {
+        m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+    });
+
+    // ===== DASHBOARD =====
+    async function loadDashboard() {
+        const { data } = await api('GET', '/resumo?janelaMinutos=60');
+        if (data && !data.error) {
+            document.getElementById('dash-contas-ativas').textContent = data.contasAtivasAgora ?? '—';
+            document.getElementById('dash-saldo-total').textContent = data.saldoTotalUsuariosAgora != null ? fmt(data.saldoTotalUsuariosAgora) : '—';
+            document.getElementById('dash-transferencias').textContent = data.transferenciasNaJanela ?? '—';
+            document.getElementById('dash-valor-hora').textContent = data.valorTransferidoNaJanela != null ? `${fmt(data.valorTransferidoNaJanela)} transferidos` : 'na última hora';
+            document.getElementById('dash-agendamentos-label').textContent = `${data.agendamentosPendentesAgora ?? 0} agendamento(s) pendente(s)`;
+            // janela
+            document.getElementById('j-transf').textContent = data.transferenciasNaJanela ?? '—';
+            document.getElementById('j-vol').textContent = fmt(data.valorTransferidoNaJanela);
+            document.getElementById('j-tax').textContent = fmt(data.taxasNaJanela);
+            document.getElementById('j-ticket').textContent = fmt(data.ticketMedioNaJanela);
+            const zero = data.somaDosMovimentosEhZero;
+            const el = document.getElementById('dash-saldo-zero');
+            el.textContent = zero === true ? '✅ OK' : zero === false ? '❌ ERRO' : '—';
+            el.style.color = zero === true ? 'var(--success)' : 'var(--danger)';
+        }
+        await loadContasIntoTable('dash-contas-table', true);
+    }
+
+    // ===== LOAD CONTAS INTO ANY TABLE =====
+    const ALL_CONTAS = ['CONTA-001','CONTA-002','CONTA-003','CONTA-004','CONTA-005','CONTA-006','CONTA-007','SISTEMA-ENTRADA','SISTEMA-TAXAS'];
+    const USER_CONTAS = ALL_CONTAS.filter(c => !c.startsWith('SISTEMA'));
+
+    async function loadContasIntoTable(tableId, withActions = false) {
+        const tbody = document.getElementById(tableId);
+        tbody.innerHTML = '<tr><td colspan="7" class="loading">Carregando contas...</td></tr>';
+
+        const numeros = withActions ? USER_CONTAS : USER_CONTAS;
+        const rows = [];
+
+        for (const num of numeros) {
+            const { data, status } = await api('GET', `/contas/${num}/extrato?size=1`);
+            if (status !== 200 || !data) continue;
+
+            const conta = contasList.find(c => c.numero === num);
+            const estado = conta?.estado ?? 'ATIVA';
+            const saldo = data.saldoAtual ?? 0;
+            const isSistema = num.startsWith('SISTEMA');
+            const titular = isSistema ? 'Sistema' : `Usuário ${num.split('-')[1]}`;
+            const badgeClass = estado === 'ATIVA' ? 'badge-ativa' : estado === 'BLOQUEADA' ? 'badge-bloqueada' : 'badge-encerrada';
+
+            rows.push(`<tr>
+                <td class="mono" style="font-weight:600">${num}</td>
+                <td>${titular}</td>
+                <td><span class="badge ${isSistema ? 'badge-sistema' : badgeClass}">${isSistema ? 'SISTEMA' : estado}</span></td>
+                <td style="font-weight:700;color:${saldo >= 0 ? 'var(--success)' : 'var(--danger)'}">${fmt(saldo)}</td>
+                <td style="color:var(--text-dim)">${isSistema ? '—' : fmt(2000)}</td>
+                ${withActions ? `<td>
+                    ${!isSistema && estado !== 'ENCERRADA' ? `<button class="action-btn" onclick="openDepositoModal('${num}')">💰 Depositar</button> ` : ''}
+                    <button class="action-btn" onclick="showPage('extrato');setTimeout(()=>{document.getElementById('extrato-conta').value='${num}';loadExtrato();},100)">📜 Extrato</button>
+                </td>` : '<td></td>'}
+            </tr>`);
+        }
+
+        tbody.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="7" class="loading">Nenhuma conta encontrada</td></tr>';
+    }
+
+    // ===== CONTAS PAGE =====
+    async function loadContas() {
+        const tbody = document.getElementById('contas-table');
+        tbody.innerHTML = '<tr><td colspan="7" class="loading">Carregando...</td></tr>';
+        contasList = [];
+        const rows = [];
+
+        for (const num of ALL_CONTAS) {
+            const { data, status } = await api('GET', `/contas/${num}/extrato?size=1`);
+            if (status !== 200 || !data) continue;
+
+            const saldo = data.saldoAtual ?? 0;
+            const isSistema = num.startsWith('SISTEMA');
+            const idx = parseInt(num.split('-')[1]) || 0;
+            const usuarios = { 1:'User 1',2:'User 2',3:'User 3',4:'User 4',5:'User 5',6:'User Blocked',7:'User Closed' };
+            const titular = isSistema ? 'Sistema' : (usuarios[idx] || 'Usuário');
+            const cpfMask = isSistema ? '—' : `***.${String(idx).padStart(3,'0').repeat(2).substring(0,3)}.xxx-**`;
+
+            // Estado inferido por número de conta
+            const estadoMap = { 6:'BLOQUEADA', 7:'ENCERRADA' };
+            const estado = isSistema ? 'SISTEMA' : (estadoMap[idx] || 'ATIVA');
+            const badgeClass = estado === 'ATIVA' ? 'badge-ativa' : estado === 'BLOQUEADA' ? 'badge-bloqueada' : estado === 'ENCERRADA' ? 'badge-encerrada' : 'badge-sistema';
+
+            contasList.push({ numero: num, saldo, estado });
+
+            rows.push(`<tr>
+                <td class="mono" style="font-weight:700">${num}</td>
+                <td>${titular}</td>
+                <td class="mono" style="color:var(--text-muted)">${cpfMask}</td>
+                <td><span class="badge ${badgeClass}">${estado}</span></td>
+                <td style="font-weight:700;color:${saldo >= 0 ? 'var(--success)' : 'var(--danger)'}">${fmt(saldo)}</td>
+                <td style="color:var(--text-dim)">${isSistema ? '—' : fmt(2000)}</td>
+                <td>
+                    ${!isSistema && estado !== 'ENCERRADA' ? `<button class="action-btn" onclick="openDepositoModal('${num}')">💰</button> ` : ''}
+                    <button class="action-btn" onclick="showPage('extrato');setTimeout(()=>{document.getElementById('extrato-conta').value='${num}';loadExtrato();},100)">📜</button>
+                </td>
+            </tr>`);
+        }
+
+        tbody.innerHTML = rows.join('');
+        populateSelects();
+    }
+
+    function populateSelects() {
+        const userContas = contasList.filter(c => !c.startsWith?.('SISTEMA') && !c.numero?.startsWith('SISTEMA'));
+        ['transf-origem','transf-destino','agend-origem','agend-destino'].forEach(selId => {
+            const sel = document.getElementById(selId);
+            if (!sel) return;
+            const cur = sel.value;
+            sel.innerHTML = '';
+            userContas.forEach(c => {
+                if (c.estado === 'ENCERRADA') return;
+                sel.insertAdjacentHTML('beforeend', `<option value="${c.numero}">${c.numero} — ${fmt(c.saldo)} ${c.estado !== 'ATIVA' ? '⚠️ ' + c.estado : ''}</option>`);
+            });
+            if (cur) sel.value = cur;
+        });
+    }
+
+    function populateExtratoSelect() {
+        const sel = document.getElementById('extrato-conta');
+        if (!sel) return;
+        if (contasList.length === 0) return;
+        const cur = sel.value;
+        sel.innerHTML = '';
+        contasList.forEach(c => {
+            sel.insertAdjacentHTML('beforeend', `<option value="${c.numero}">${c.numero} (${fmt(c.saldo)})</option>`);
+        });
+        if (cur) sel.value = cur;
+    }
+
+    // ===== TRANSFERÊNCIAS (carrega via extratos) =====
+    async function loadTransferencias() {
+        const tbody = document.getElementById('transf-table');
+        tbody.innerHTML = '<tr><td colspan="7" class="loading">Carregando extratos de todas as contas...</td></tr>';
+        allMovimentos = [];
+
+        for (const num of ALL_CONTAS) {
+            const { data, status } = await api('GET', `/contas/${num}/extrato?size=200`);
+            if (status !== 200 || !data?.movimentos) continue;
+            data.movimentos.forEach(m => {
+                allMovimentos.push({ ...m, conta: num });
+            });
+        }
+
+        // Ordena por data decrescente
+        allMovimentos.sort((a, b) => new Date(b.data) - new Date(a.data));
+
+        let totalVol = 0;
+        let entradas = 0;
+        allMovimentos.forEach(m => { if (m.tipo === 'ENTRADA') { totalVol += m.valor; entradas++; } });
+
+        document.getElementById('transf-count').textContent = allMovimentos.length;
+        document.getElementById('transf-vol').textContent = fmt(totalVol);
+
+        if (allMovimentos.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="loading">Nenhum movimento encontrado. Faça uma transferência!</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = allMovimentos.slice(0, 100).map((m, i) => {
+            const isEntrada = m.tipo === 'ENTRADA';
+            return `<tr>
+                <td style="color:var(--text-muted);font-size:0.78rem">${i+1}</td>
+                <td class="mono" style="font-weight:600">${m.conta}</td>
+                <td><span class="badge ${isEntrada ? 'badge-confirmada' : 'badge-estornada'}">${m.tipo}</span></td>
+                <td style="font-weight:700;color:${isEntrada ? 'var(--success)' : 'var(--danger)'}">${isEntrada ? '+' : '-'}${fmt(m.valor)}</td>
+                <td class="mono">${fmt(m.saldoApos)}</td>
+                <td style="color:var(--text-dim);font-size:0.8rem">${new Date(m.data).toLocaleString('pt-BR')}</td>
+                <td>
+                    ${!isEntrada && m.transferenciaId ? `<button class="action-btn" onclick="openEstornoModal('${m.transferenciaId}','${m.conta}','${m.tipo}','${m.valor}')">↩️ Estornar</button>` : ''}
+                </td>
+            </tr>`;
+        }).join('');
+
+        if (allMovimentos.length > 100) {
+            tbody.insertAdjacentHTML('beforeend', `<tr><td colspan="7" style="text-align:center;padding:1rem;color:var(--text-muted);font-size:0.8rem">… e mais ${allMovimentos.length - 100} movimentos. Use o Extrato por conta para ver todos.</td></tr>`);
+        }
+    }
+
+    // ===== TRANSFERÊNCIA =====
+    function openTransfModal() {
+        if (contasList.length === 0) { loadContas().then(() => openModal('modal-transf')); return; }
+        populateSelects();
+        document.getElementById('transf-valor').value = '';
+        document.getElementById('transf-preview').style.display = 'none';
+        openModal('modal-transf');
+    }
+
+    function previewTaxa() {
+        const val = parseFloat(document.getElementById('transf-valor').value);
+        const prev = document.getElementById('transf-preview');
+        if (!val || val <= 0) { prev.style.display = 'none'; return; }
+        const taxa = calcTaxaValue(val);
+        document.getElementById('prev-taxa').textContent = fmt(taxa);
+        document.getElementById('prev-total').textContent = fmt(val + taxa);
+        prev.style.display = 'block';
+    }
+
+    function calcTaxaValue(valorReais) {
+        const centavos = Math.round(valorReais * 100);
+        if (centavos <= 10000) return 0;
+        let taxa = Math.round(centavos * 0.01);
+        if (taxa < 100) taxa = 100;
+        if (taxa > 2000) taxa = 2000;
+        return taxa / 100;
+    }
+
+    async function realizarTransferencia() {
+        const origem = document.getElementById('transf-origem').value;
+        const destino = document.getElementById('transf-destino').value;
+        const valor = parseFloat(document.getElementById('transf-valor').value);
+        if (!valor || valor <= 0) { toast('error', 'Erro', 'Informe um valor válido'); return; }
+        if (origem === destino) { toast('error', 'Erro', 'Conta de origem e destino são iguais'); return; }
+
+        const { status, data } = await api('POST', '/transferencias', { contaOrigem: origem, contaDestino: destino, valor }, uuid());
+        if (status === 201) {
+            toast('success', 'Transferência Realizada!', `${fmt(data.valor)} de ${origem} → ${destino}. Taxa: ${fmt(data.taxa)}`);
+            closeModal('modal-transf');
+        } else {
+            toast('error', `Erro ${status}`, data?.message || data?.codigo || 'Falha na transferência');
+        }
+    }
+
+    // ===== ESTORNO =====
+    function openEstornoModal(id, conta, tipo, valor) {
+        // Para estorno, o usuário precisa informar o ID da transferência original.
+        // Exibimos informações do movimento e pedimos o UUID.
+        document.getElementById('estorno-info').value = conta ? `${conta} · ${tipo} · ${fmt(valor)}` : '';
+        document.getElementById('estorno-id').value = id || '';
+        document.getElementById('estorno-id').readOnly = !!id;
+        document.getElementById('estorno-motivo').value = '';
+        openModal('modal-estorno');
+    }
+
+    async function realizarEstorno() {
+        const id = document.getElementById('estorno-id').value.trim();
+        const motivo = document.getElementById('estorno-motivo').value || 'Solicitação do usuário';
+        if (!id) { toast('error', 'Erro', 'Informe o ID da transferência'); return; }
+        const { status, data } = await api('POST', `/transferencias/${id}/estorno`, { motivo }, uuid());
+        if (status === 201) {
+            toast('success', 'Estorno Realizado!', `Transferência estornada com sucesso.`);
+            closeModal('modal-estorno');
+        } else {
+            toast('error', `Erro ${status}`, data?.message || data?.codigo || 'Falha no estorno');
+        }
+    }
+
+    // ===== DEPÓSITO =====
+    function openDepositoModal(numero) {
+        document.getElementById('dep-conta').value = numero;
+        document.getElementById('dep-valor').value = '';
+        openModal('modal-deposito');
+    }
+
+    async function realizarDeposito() {
+        const conta = document.getElementById('dep-conta').value;
+        const valor = parseFloat(document.getElementById('dep-valor').value);
+        if (!valor || valor <= 0) { toast('error', 'Erro', 'Informe um valor válido'); return; }
+        const { status, data } = await api('POST', `/contas/${conta}/depositos`, { valor }, uuid());
+        if (status === 201) {
+            toast('success', 'Depósito Realizado!', `${fmt(valor)} creditado em ${conta}`);
+            closeModal('modal-deposito');
+            if (document.getElementById('page-dashboard').classList.contains('active')) loadDashboard();
+        } else {
+            toast('error', `Erro ${status}`, data?.message || data?.codigo || 'Falha no depósito');
+        }
+    }
+
+    // ===== AGENDAMENTOS =====
+    async function loadAgendamentos() {
+        const tbody = document.getElementById('agend-table');
+        tbody.innerHTML = '<tr><td colspan="9" class="loading">Buscando agendamentos...</td></tr>';
+
+        const { status, data } = await api('GET', '/transferencias-agendadas');
+        
+        if (status !== 200 || !data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="loading">Nenhum agendamento criado. Crie um acima!</td></tr>';
+            document.getElementById('agend-count-agendado').textContent = '0';
+            document.getElementById('agend-count-concluido').textContent = '0';
+            document.getElementById('agend-count-falhado').textContent = '0';
+            return;
+        }
+
+        const rows = data.map(a => {
+            const stateClass = a.estado === 'AGENDADO' ? 'badge-agendado' : a.estado === 'CONCLUIDO' ? 'badge-concluido' : a.estado === 'PROCESSANDO' ? 'badge-processando' : 'badge-falhada';
+            return `<tr>
+                <td class="mono" style="color:var(--text-muted);font-size:0.75rem">${shortId(a.id)}</td>
+                <td class="mono">${a.contaOrigem}</td>
+                <td class="mono">${a.contaDestino}</td>
+                <td style="font-weight:700">${fmt(a.valor/100)}</td>
+                <td><span class="badge ${stateClass}">${a.estado}</span></td>
+                <td style="font-size:0.8rem;color:var(--text-dim)">${new Date(a.executarEm).toLocaleString('pt-BR')}</td>
+                <td style="text-align:center;color:var(--text-muted)">${a.tentativas ?? 0}</td>
+                <td class="mono" style="color:var(--text-muted);font-size:0.75rem">${a.transferenciaId ? shortId(a.transferenciaId) : '—'}</td>
+                <td>
+                    ${a.estado === 'AGENDADO' ? `<button onclick="cancelarAgendamento('${a.id}')" style="background:var(--danger);color:#fff;border:none;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:0.75rem">Cancelar</button>` : ''}
+                </td>
+            </tr>`;
+        });
+
+        tbody.innerHTML = rows.join('');
+        document.getElementById('agend-count-agendado').textContent = data.filter(a => a.estado === 'AGENDADO').length;
+        document.getElementById('agend-count-concluido').textContent = data.filter(a => a.estado === 'CONCLUIDO').length;
+        document.getElementById('agend-count-falhado').textContent = data.filter(a => a.estado === 'FALHADO').length;
+    }
+
+    function openAgendModal() {
+        if (contasList.length === 0) { loadContas().then(() => openModal('modal-agend')); return; }
+        populateSelects();
+        const amanha = new Date();
+        amanha.setMinutes(amanha.getMinutes() + 2); // padrão: 2 minutos no futuro para testar rápido
+        document.getElementById('agend-data').value = amanha.toISOString().slice(0, 16);
+        openModal('modal-agend');
+    }
+
+    async function criarAgendamento() {
+        const origem = document.getElementById('agend-origem').value;
+        const destino = document.getElementById('agend-destino').value;
+        const valor = parseFloat(document.getElementById('agend-valor').value);
+        const executarEm = document.getElementById('agend-data').value;
+        if (!valor || valor <= 0) { toast('error', 'Erro', 'Informe um valor válido'); return; }
+        if (!executarEm) { toast('error', 'Erro', 'Informe a data de execução'); return; }
+
+        const body = { contaOrigem: origem, contaDestino: destino, valor, executarEm: new Date(executarEm).toISOString() };
+        const { status, data } = await api('POST', '/transferencias-agendadas', body, uuid());
+
+        if (status === 201) {
+            const agend = {
+                id: data.agendamentoId || data.id,
+                contaOrigem: origem,
+                contaDestino: destino,
+                valor,
+                executarEm: new Date(executarEm).toISOString(),
+                estado: 'AGENDADO',
+                tentativas: 0
+            };
+            const cached = JSON.parse(localStorage.getItem('agendamentos') || '[]');
+            cached.unshift(agend);
+            localStorage.setItem('agendamentos', JSON.stringify(cached.slice(0, 50)));
+
+            toast('success', 'Agendamento Criado!', `${fmt(valor)} de ${origem} → ${destino}. Executa em ${new Date(executarEm).toLocaleString('pt-BR')}`);
+            closeModal('modal-agend');
+            loadAgendamentos();
+        } else {
+            toast('error', `Erro ${status}`, data?.message || data?.codigo || 'Falha ao agendar');
+        }
+    }
+
+    async function cancelarAgendamento(id) {
+        if (!confirm("Tem certeza que deseja cancelar este agendamento?")) return;
+        const { status, data } = await api('POST', `/transferencias-agendadas/${id}/cancelamento`);
+        if (status === 200) {
+            toast('success', 'Sucesso', 'Agendamento cancelado com sucesso.');
+            loadAgendamentos();
+        } else {
+            toast('error', 'Erro ' + status, data?.message || data?.codigo || 'Erro ao cancelar');
+        }
+    }
+
+    async function bulkAgendar() {
+        const btn = document.getElementById('btn-bulk-agendar');
+        btn.disabled = true;
+        btn.textContent = '⏳ Agendando...';
+
+        try {
+            const contasValidas = ['CONTA-001', 'CONTA-002', 'CONTA-003', 'CONTA-004', 'CONTA-005'];
+            const promises = [];
+            const qtd = 30; // 30 agendamentos (1 a cada 10s = 5 minutos)
+
+            for (let i = 0; i < qtd; i++) {
+                // Sorteia duas contas diferentes
+                let origem = contasValidas[Math.floor(Math.random() * contasValidas.length)];
+                let destino = contasValidas[Math.floor(Math.random() * contasValidas.length)];
+                while (origem === destino) {
+                    destino = contasValidas[Math.floor(Math.random() * contasValidas.length)];
+                }
+
+                // Valor aleatório entre 10 e 500 (para gerar taxas de vez em quando)
+                const valor = parseFloat((Math.random() * 490 + 10).toFixed(2));
+
+                // Espalha as transferências uniformemente a cada 10 segundos
+                const delayMs = (i + 1) * 10000;
+                const executarEm = new Date(Date.now() + delayMs);
+
+                const promise = api('POST', '/transferencias-agendadas', { 
+                    contaOrigem: origem, 
+                    contaDestino: destino, 
+                    valor, 
+                    executarEm: executarEm.toISOString() 
+                }, uuid()).then(res => ({ req: { origem, destino, valor, executarEm }, res }));
+                
+                promises.push(promise);
+            }
+
+            const results = await Promise.allSettled(promises);
+            const cached = JSON.parse(localStorage.getItem('agendamentos') || '[]');
+            let sucessos = 0;
+
+            results.forEach(r => { 
+                if (r.status === 'fulfilled' && r.value.res.status === 201) {
+                    sucessos++;
+                    const { req, res } = r.value;
+                    cached.unshift({
+                        id: res.data.agendamentoId || res.data.id,
+                        contaOrigem: req.origem,
+                        contaDestino: req.destino,
+                        valor: req.valor,
+                        executarEm: req.executarEm.toISOString(),
+                        estado: 'AGENDADO',
+                        tentativas: 0
+                    });
+                }
+            });
+
+            localStorage.setItem('agendamentos', JSON.stringify(cached.slice(0, 50)));
+
+            toast('success', 'Bulk Agendamento Concluído', `${sucessos} transferências agendadas aleatoriamente para os próximos 5 minutos!`);
+            loadAgendamentos();
+        } catch (e) {
+            toast('error', 'Erro', 'Falha no agendamento em lote: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '⚡ Bulk Agendar (5m)';
+        }
+    }
+
+    // ===== EXTRATO =====
+    async function loadExtrato() {
+        const conta = document.getElementById('extrato-conta').value;
+        if (!conta) return;
+        const de = document.getElementById('extrato-de').value;
+        const ate = document.getElementById('extrato-ate').value;
+        let path = `/contas/${conta}/extrato?size=100`;
+        if (de) path += `&de=${encodeURIComponent(new Date(de).toISOString())}`;
+        if (ate) path += `&ate=${encodeURIComponent(new Date(ate).toISOString())}`;
+
+        const { status, data } = await api('GET', path);
+        if (status !== 200 || !data) { toast('error', 'Erro', 'Conta não encontrada'); return; }
+
+        document.getElementById('extrato-stats').style.display = 'grid';
+        document.getElementById('ext-numero').textContent = conta;
+        const saldo = data.saldoAtual ?? 0;
+        document.getElementById('ext-saldo').textContent = fmt(saldo);
+        document.getElementById('ext-saldo').style.color = saldo >= 0 ? 'var(--success)' : 'var(--danger)';
+        document.getElementById('ext-total').textContent = data.movimentos?.length ?? 0;
+
+        const tbody = document.getElementById('extrato-table');
+        if (!data.movimentos || data.movimentos.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="loading">Nenhum movimento encontrado</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.movimentos.map((m, i) => {
+            const isEntrada = m.tipo === 'ENTRADA';
+            return `<tr>
+                <td class="mono" style="color:var(--text-muted)">${i + 1}</td>
+                <td><span class="badge ${isEntrada ? 'badge-confirmada' : 'badge-estornada'}">${m.tipo}</span></td>
+                <td style="font-weight:700;color:${isEntrada ? 'var(--success)' : 'var(--danger)'}">${isEntrada ? '+' : '-'}${fmt(m.valor)}</td>
+                <td class="mono">${fmt(m.saldoApos)}</td>
+                <td style="color:var(--text-dim);font-size:0.8rem">${new Date(m.data).toLocaleString('pt-BR')}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    // ===== LOGS BANCO =====
+    async function loadLogsBanco() {
+        const tbody = document.getElementById('logs-banco-table');
+        tbody.innerHTML = '<tr><td colspan="7" class="loading">Carregando logs do banco...</td></tr>';
+        
+        const { status, data } = await api('GET', '/logs?size=50');
+        if (status !== 200 || !data?.content) {
+            const mensagem = data?.message || `A API respondeu HTTP ${status || 'ERR'}`;
+            tbody.innerHTML = `<tr><td colspan="7" class="loading">${mensagem}</td></tr>`;
+            toast('error', 'Logs indisponíveis', mensagem);
+            return;
+        }
+
+        if (data.content.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="loading">Nenhum log no banco.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.content.map(L => {
+            const statusClass = L.statusHttp >= 200 && L.statusHttp < 300 ? 'badge-confirmada' : 'badge-estornada';
+            
+            let detalhes = '-';
+            try {
+                const req = L.payloadRequisicao ? JSON.parse(L.payloadRequisicao) : null;
+                const res = L.payloadResposta ? JSON.parse(L.payloadResposta) : null;
+                
+                if (L.endpoint.includes('/transferencias-agendadas')) {
+                    if (req && req.valor) {
+                        detalhes = `🗓️ Agendamento da <b>${req.contaOrigem}</b> para <b>${req.contaDestino}</b> | Valor: <b>${fmt(req.valor)}</b>`;
+                        if (res && res.codigo) detalhes += `<br><span style="color:var(--danger);font-size:0.8rem">❌ Falhou: ${res.message || res.codigo}</span>`;
+                        else if (res && res.agendamentoId) detalhes += `<br><span style="color:var(--success);font-size:0.8rem">✅ Sucesso: Criado ID ${shortId(res.agendamentoId)}</span>`;
+                    } else if (L.metodo === 'GET') {
+                        detalhes = `📋 Listagem de Agendamentos pendentes/concluídos`;
+                    }
+                } else if (L.endpoint.includes('/transferencias') && !L.endpoint.includes('/estorno')) {
+                    if (req && req.valor) {
+                        detalhes = `💸 Transferência da <b>${req.contaOrigem}</b> para <b>${req.contaDestino}</b> | Valor transferido: <b>${fmt(req.valor)}</b>`;
+                        if (res && res.taxa !== undefined) detalhes += ` <span style="color:var(--warning);font-size:0.8rem">(+ Taxa cobrada: ${fmt(res.taxa)})</span>`;
+                        if (res && res.codigo) detalhes += `<br><span style="color:var(--danger);font-size:0.8rem">❌ Falhou: ${res.message || res.codigo}</span>`;
+                        else if (res && res.id) detalhes += `<br><span style="color:var(--success);font-size:0.8rem">✅ Sucesso: Concluída ID ${shortId(res.id)}</span>`;
+                    }
+                } else if (L.endpoint.includes('/estorno')) {
+                    detalhes = `↩️ Solicitação de Estorno | Motivo: <i>${req?.motivo || 'Nenhum'}</i>`;
+                    if (res && res.codigo) detalhes += `<br><span style="color:var(--danger);font-size:0.8rem">❌ Falhou: ${res.message || res.codigo}</span>`;
+                    else if (res && res.id) detalhes += `<br><span style="color:var(--success);font-size:0.8rem">✅ Sucesso: Estornado ID ${shortId(res.id)}</span>`;
+                } else if (L.endpoint.includes('/depositos')) {
+                    if (req && req.valor) {
+                        const conta = L.endpoint.split('/')[2] || 'Conta';
+                        detalhes = `💰 Depósito na <b>${conta}</b> | Valor depositado: <b>${fmt(req.valor)}</b>`;
+                        if (res && res.codigo) detalhes += `<br><span style="color:var(--danger);font-size:0.8rem">❌ Falhou: ${res.message || res.codigo}</span>`;
+                        else if (res && res.id) detalhes += `<br><span style="color:var(--success);font-size:0.8rem">✅ Sucesso no crédito</span>`;
+                    }
+                } else if (L.endpoint.includes('/extrato')) {
+                    const conta = L.endpoint.split('/')[2] || 'Conta';
+                    detalhes = `📄 Consulta de Extrato da <b>${conta}</b>`;
+                } else if (L.endpoint.includes('/resumo')) {
+                    detalhes = `📊 Leitura dos dados do Dashboard Geral`;
+                } else if (L.endpoint.includes('/dados')) {
+                    detalhes = `♻️ Reset Completo do Banco de Dados para a carga inicial`;
+                } else {
+                    detalhes = `🔗 Outro endpoint`;
+                    if (res && res.codigo) detalhes += `<br><span style="color:var(--danger);font-size:0.8rem">❌ Erro: ${res.message || res.codigo}</span>`;
+                }
+            } catch(e) {
+                console.error("Erro render log", e);
+            }
+
+            return `<tr>
+                <td class="mono" style="font-size:0.75rem;color:var(--text-muted)" title="${L.id}">${shortId(L.id)}</td>
+                <td><span style="font-weight:700;color:var(--primary)">${L.metodo}</span></td>
+                <td class="mono" style="font-size:0.8rem;color:var(--text-dim)">${L.endpoint}</td>
+                <td style="font-size:0.85rem">${detalhes}</td>
+                <td><span class="badge ${statusClass}">${L.statusHttp}</span></td>
+                <td style="color:var(--text-muted)">${L.tempoExecucaoMs} ms</td>
+                <td style="color:var(--text-dim);font-size:0.8rem">${new Date(L.criadoEm).toLocaleString('pt-BR')}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    // ===== CALCULADORA DE TAXA =====
+    function calcTaxa() {
+        const val = parseFloat(document.getElementById('calc-valor').value);
+        const taxaEl = document.getElementById('calc-taxa');
+        const totalEl = document.getElementById('calc-total');
+        const ruleEl = document.getElementById('calc-rule');
+
+        if (!val || val <= 0) {
+            taxaEl.textContent = '—'; totalEl.textContent = '—';
+            ruleEl.textContent = 'Digite um valor acima para calcular a taxa.';
+            return;
+        }
+
+        const centavos = Math.round(val * 100);
+        let taxa = 0, regra = '';
+
+        if (centavos <= 10000) {
+            taxa = 0;
+            regra = `✅ Isento — transferências de até R$100,00 não pagam taxa.`;
+        } else {
+            taxa = Math.round(centavos * 0.01);
+            let motivo = `1% de ${fmt(val)} = ${fmt(taxa/100)}`;
+            if (taxa < 100) { taxa = 100; regra = `⬆️ Mínimo aplicado — ${motivo} ficou abaixo do mínimo de R$1,00.`; }
+            else if (taxa > 2000) { taxa = 2000; regra = `🔒 Teto aplicado — ${motivo} ultrapassou o teto de R$20,00.`; }
+            else { regra = `📐 ${motivo} — arredondado para ${fmt(taxa/100)}.`; }
+        }
+
+        taxaEl.textContent = fmt(taxa / 100);
+        taxaEl.style.color = taxa === 0 ? 'var(--success)' : taxa >= 2000 ? 'var(--danger)' : 'var(--warning)';
+        totalEl.textContent = fmt(val + taxa/100);
+        totalEl.style.color = 'var(--danger)';
+        ruleEl.textContent = regra;
+        ruleEl.style.color = taxa === 0 ? 'var(--success)' : 'var(--text-muted)';
+    }
+
+    // ===== RESET =====
+    function confirmReset() {
+        if (confirm('⚠️ Isso vai APAGAR todos os movimentos, transferências, agendamentos e chaves de idempotência, restaurando os saldos iniciais da migration.\n\nConfirmar reset?')) {
+            api('DELETE', '/dados').then(({ status }) => {
+                if (status === 200) {
+                    localStorage.removeItem('agendamentos');
+                    toast('success', 'Banco Resetado', 'Carga inicial restaurada. Saldos voltaram a R$1.000,00.');
+                    contasList = [];
+                    loadDashboard();
+                } else {
+                    toast('error', 'Erro', 'Falha ao resetar o banco.');
+                }
+            });
+        }
+    }
+
+    // ===== STATUS CHECK =====
+    async function checkStatus() {
+        try {
+            const res = await fetch(`${API}/resumo`, { method: 'GET' });
+            const online = res.ok;
+            document.getElementById('statusDot').className = `status-dot${online ? '' : ' offline'}`;
+            document.getElementById('statusText').textContent = online ? 'API Online' : 'API Offline';
+        } catch {
+            document.getElementById('statusDot').className = 'status-dot offline';
+            document.getElementById('statusText').textContent = 'API Offline';
+        }
+    }
+
+    // ===== AUTO SYNC =====
+    // Melhora a sincronização com o banco rodando em background
+    async function syncData() {
+        await checkStatus();
+        const activePage = document.querySelector('.page.active');
+        if (!activePage) return;
+        const id = activePage.id;
+        
+        // Evita piscar e sobrecarregar se tiver modals abertos
+        if (document.querySelector('.modal.open')) return;
+
+        if (id === 'page-dashboard') await loadDashboard();
+        else if (id === 'page-contas') await loadContas();
+        else if (id === 'page-transferencias') await loadTransferencias();
+        else if (id === 'page-agendamentos') await loadAgendamentos();
+        else if (id === 'page-extrato') await loadExtrato();
+        else if (id === 'page-logs') await loadLogsBanco();
+    }
+
+    // ===== TESTES E2E INDIVIDUAIS =====
+    function setE2EExecutionButtonsDisabled(disabled) {
+        document.getElementById('btn-run-tests').disabled = disabled;
+        document.querySelectorAll('.test-run').forEach(button => { button.disabled = disabled; });
+    }
+
+    function resetTestVisual(id) {
+        const el = document.getElementById(id);
+        el.className = 'test-row';
+        el.querySelector('.icon').textContent = '⏳';
+        const detail = document.getElementById(id + '-detail');
+        if (detail) { detail.innerHTML = ''; detail.classList.remove('has-content'); }
+    }
+
+    function setTestRunning(id) {
+        const el = document.getElementById(id);
+        el.className = 'test-row running';
+        el.querySelector('.icon').textContent = '↻';
+    }
+
+    // Formata um step de resposta da API em HTML
+    function fmtEntry(step, method, path, res) {
+        const s = res.status;
+        const d = res.data;
+        const cls = s >= 200 && s < 300 ? 'ok' : s >= 400 && s < 500 ? (s === 409 ? 'warn' : 'err') : 'err';
+        const codigo = d?.codigo || '';
+        const message = d?.message || '';
+        // Campos extras para respostas de sucesso
+        let extra = '';
+        if (s === 201 && d?.transferenciaId) extra = `id:${d.transferenciaId.substring(0,8)}…`;
+        else if (s === 201 && d?.agendamentoId) extra = `id:${d.agendamentoId.substring(0,8)}…`;
+        else if (s === 201 && d?.taxa !== undefined) extra = `taxa:R$${d.taxa}`;
+        else if (s === 200 && d?.transferenciaId) extra = `(idempotente)`;
+        return `<div class="test-detail-entry">
+            <span class="td-step">#${step}</span>
+            <span class="td-method">${method}</span>
+            <span class="td-path" title="${path}">${path}</span>
+            <span class="td-status ${cls}">${s}</span>
+            ${codigo ? `<span class="td-code">${codigo}</span>` : ''}
+            ${message ? `<span class="td-msg" title="${message}">${message.substring(0, 60)}${message.length > 60 ? '…' : ''}</span>` : ''}
+            ${extra ? `<span class="td-extra">${extra}</span>` : ''}
+        </div>`;
+    }
+
+    function setTestResult(id, isOk, entries) {
+        const el = document.getElementById(id);
+        el.className = 'test-row ' + (isOk ? 'success' : 'error');
+        el.querySelector('.icon').textContent = isOk ? '✅' : '❌';
+        const detail = document.getElementById(id + '-detail');
+        if (detail && entries && entries.length > 0) {
+            detail.innerHTML = entries.map((e, i) => fmtEntry(i + 1, e.method || 'POST', e.path, e.res)).join('');
+            detail.classList.add('has-content');
+        }
+    }
+
+    async function executeSingleE2ETest(id) {
+        const transferir = (contaOrigem, contaDestino, valor, key = uuid()) =>
+            api('POST', '/transferencias', { contaOrigem, contaDestino, valor }, key);
+        const E = (path, res, method = 'POST') => ({ path, res, method }); // entry helper
+
+        switch (id) {
+            case 'test-saldo': {
+                const res = await transferir('CONTA-001', 'CONTA-002', 2000);
+                return { passed: res.status === 422 && res.data?.codigo === 'SALDO_INSUFICIENTE',
+                    entries: [E('/transferencias (R$2000)', res)] };
+            }
+            case 'test-sucesso': {
+                const res = await transferir('CONTA-001', 'CONTA-002', 150);
+                return { passed: res.status === 201 && Number(res.data?.taxa) === 1.5,
+                    entries: [E('/transferencias (R$150)', res)] };
+            }
+            case 'test-idempotencia': {
+                const key = uuid();
+                const primeira  = await transferir('CONTA-001', 'CONTA-002', 150, key);
+                const repeticao = await transferir('CONTA-001', 'CONTA-002', 150, key);
+                const conflito  = await transferir('CONTA-001', 'CONTA-002', 300, key);
+                return { passed: primeira.status === 201 && repeticao.status === 200
+                    && conflito.status === 409 && conflito.data?.codigo === 'CHAVE_EM_USO',
+                    entries: [
+                        E('/transferencias (1ª — nova)', primeira),
+                        E('/transferencias (2ª — mesma chave/corpo)', repeticao),
+                        E('/transferencias (3ª — mesma chave/corpo diferente)', conflito)
+                    ] };
+            }
+            case 'test-limite': {
+                const dep = await api('POST', '/contas/CONTA-003/depositos', { valor: 10000 }, uuid());
+                const r1 = await transferir('CONTA-003', 'CONTA-004', 1900);
+                const r2 = await transferir('CONTA-003', 'CONTA-004', 200);
+                return { passed: r1.status === 201 && r2.status === 422 && r2.data?.codigo === 'LIMITE_DIARIO_EXCEDIDO',
+                    entries: [
+                        E('/contas/CONTA-003/depositos (R$10000)', dep),
+                        E('/transferencias (R$1900 — dentro do limite)', r1),
+                        E('/transferencias (R$200 — estoura limite)', r2)
+                    ] };
+            }
+            case 'test-estorno': {
+                const transf = await transferir('CONTA-001', 'CONTA-002', 150);
+                if (transf.status !== 201 || !transf.data?.transferenciaId)
+                    return { passed: false, entries: [E('/transferencias (R$150)', transf)] };
+                const estorno = await api('POST', `/transferencias/${transf.data.transferenciaId}/estorno`, { motivo: 'Teste E2E' }, uuid());
+                return { passed: estorno.status === 201,
+                    entries: [
+                        E('/transferencias (R$150)', transf),
+                        E(`/transferencias/{id}/estorno`, estorno)
+                    ] };
+            }
+            case 'test-estorno-duplo': {
+                const transf = await transferir('CONTA-001', 'CONTA-002', 150);
+                if (transf.status !== 201 || !transf.data?.transferenciaId)
+                    return { passed: false, entries: [E('/transferencias (R$150)', transf)] };
+                const e1 = await api('POST', `/transferencias/${transf.data.transferenciaId}/estorno`, { motivo: '1º estorno' }, uuid());
+                const e2 = await api('POST', `/transferencias/${transf.data.transferenciaId}/estorno`, { motivo: '2º estorno' }, uuid());
+                return { passed: e1.status === 201 && e2.status === 409 && e2.data?.codigo === 'JA_ESTORNADA',
+                    entries: [
+                        E('/transferencias (R$150)', transf),
+                        E('/transferencias/{id}/estorno (1º)', e1),
+                        E('/transferencias/{id}/estorno (2º duplo)', e2)
+                    ] };
+            }
+            case 'test-agendamento': {
+                const executarEm = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+                const res = await api('POST', '/transferencias-agendadas', {
+                    contaOrigem: 'CONTA-004', contaDestino: 'CONTA-005', valor: 50, executarEm
+                }, uuid());
+                return { passed: res.status === 201, entries: [E('/transferencias-agendadas (amanhã)', res)] };
+            }
+            case 'test-data-passada': {
+                const executarEm = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+                const res = await api('POST', '/transferencias-agendadas', {
+                    contaOrigem: 'CONTA-004', contaDestino: 'CONTA-005', valor: 50, executarEm
+                }, uuid());
+                return { passed: res.status === 422 && res.data?.codigo === 'DATA_PASSADA',
+                    entries: [E('/transferencias-agendadas (ontem)', res)] };
+            }
+            case 'test-conta-inexistente': {
+                const res = await transferir('CONTA-INVENTADA', 'CONTA-001', 100);
+                return { passed: res.status === 404 && res.data?.codigo === 'CONTA_ORIGEM_INEXISTENTE',
+                    entries: [E('/transferencias (CONTA-INVENTADA → CONTA-001)', res)] };
+            }
+            case 'test-contas-iguais': {
+                const res = await transferir('CONTA-001', 'CONTA-001', 100);
+                return { passed: res.status === 409 && res.data?.codigo === 'CONTAS_IGUAIS',
+                    entries: [E('/transferencias (CONTA-001 → CONTA-001)', res)] };
+            }
+            case 'test-conta-bloqueada': {
+                const res = await transferir('CONTA-006', 'CONTA-001', 100);
+                return { passed: res.status === 409 && res.data?.codigo === 'CONTA_ORIGEM_INVALIDA',
+                    entries: [E('/transferencias (CONTA-006 bloqueada → CONTA-001)', res)] };
+            }
+            case 'test-conta-encerrada': {
+                const res = await transferir('CONTA-001', 'CONTA-007', 100);
+                return { passed: res.status === 409 && res.data?.codigo === 'CONTA_DESTINO_INVALIDA',
+                    entries: [E('/transferencias (CONTA-001 → CONTA-007 encerrada)', res)] };
+            }
+            default:
+                throw new Error(`Teste E2E desconhecido: ${id}`);
+        }
+    }
+
+    async function runSingleTest(id) {
+        if (e2eRunning) return;
+
+        e2eRunning = true;
+        setE2EExecutionButtonsDisabled(true);
+        resetTestVisual(id);
+        setTestRunning(id);
+
+        try {
+            const { passed, entries } = await executeSingleE2ETest(id);
+            setTestResult(id, passed, entries);
+            toast(passed ? 'success' : 'error', passed ? 'Teste aprovado' : 'Teste com falha',
+                passed ? 'Cenário executado com sucesso.' : 'Consulte o painel de respostas abaixo.');
+        } catch (error) {
+            setTestResult(id, false, []);
+            toast('error', 'Erro ao executar teste', error.message);
+        } finally {
+            e2eRunning = false;
+            setE2EExecutionButtonsDisabled(false);
+        }
+    }
+
+    // ===== TEST SUITE E2E =====
+    async function runTestSuite() {
+        if (e2eRunning) return;
+
+        e2eRunning = true;
+        setE2EExecutionButtonsDisabled(true);
+        const btn = document.getElementById('btn-run-tests');
+        btn.disabled = true;
+        btn.textContent = '\u23f3 Rodando...';
+
+        const tests = ['test-saldo','test-sucesso','test-idempotencia','test-limite',
+            'test-estorno','test-estorno-duplo','test-agendamento','test-data-passada',
+            'test-conta-inexistente','test-contas-iguais','test-conta-bloqueada','test-conta-encerrada'];
+
+        // Reseta visual de todos
+        tests.forEach(t => resetTestVisual(t));
+
+        let falhos = 0;
+        try {
+            toast('info', 'Testes E2E Iniciados', 'Rodando todos os cen\u00e1rios no estado atual do banco.');
+
+            for (const id of tests) {
+                setTestRunning(id);
+                try {
+                    const { passed, entries } = await executeSingleE2ETest(id);
+                    setTestResult(id, passed, entries);
+                    if (!passed) { falhos++; console.error(`Teste ${id} falhou!`); }
+                } catch (err) {
+                    setTestResult(id, false, []);
+                    falhos++;
+                    console.error(`Teste ${id} lan\u00e7ou exce\u00e7\u00e3o:`, err);
+                }
+            }
+
+            if (falhos === 0) {
+                toast('success', 'Todos aprovados \u2705', 'Todos os 12 cen\u00e1rios passaram com sucesso.');
+            } else {
+                toast('error', 'Testes com falha', `${falhos} caso(s) falharam. Veja os pain\u00e9is de resposta abaixo de cada teste.`);
+            }
+        } catch (e) {
+            toast('error', 'Erro Cr\u00edtico', 'A su\u00edte de testes falhou: ' + e.message);
+        } finally {
+            e2eRunning = false;
+            setE2EExecutionButtonsDisabled(false);
+            btn.disabled = false;
+            btn.textContent = '\u25b6\ufe0f Rodar Testes Completos';
+        }
+    }
+
+    // ===== STRESS TEST =====
+
+    async function runStressTest() {
+        const btn = document.getElementById('btn-stress-test');
+        btn.disabled = true;
+        btn.textContent = '🔥 Disparando...';
+        
+        try {
+            toast('info', 'Stress Test Iniciado', 'Disparando 50 transferências aleatórias simultâneas...');
+            
+            const contasValidas = ['CONTA-001', 'CONTA-002', 'CONTA-003', 'CONTA-004', 'CONTA-005'];
+            const promises = [];
+            
+            for (let i = 0; i < 50; i++) {
+                // Sorteia duas contas diferentes
+                let origem = contasValidas[Math.floor(Math.random() * contasValidas.length)];
+                let destino = contasValidas[Math.floor(Math.random() * contasValidas.length)];
+                while (origem === destino) {
+                    destino = contasValidas[Math.floor(Math.random() * contasValidas.length)];
+                }
+                
+                // Sorteia valor entre R$ 1.00 e R$ 500.00 para gerar taxas (acima de 100 é taxado)
+                const valor = parseFloat((Math.random() * 499 + 1).toFixed(2));
+                
+                promises.push(api('POST', '/transferencias', { contaOrigem: origem, contaDestino: destino, valor }, uuid()));
+            }
+            
+            // Aguarda todas terminarem (vão rodar em paralelo)
+            const results = await Promise.allSettled(promises);
+            
+            let sucessos = 0;
+            let falhas = 0;
+            results.forEach(r => {
+                if (r.status === 'fulfilled' && r.value.status === 201) sucessos++;
+                else falhas++;
+            });
+            
+            toast('success', 'Stress Test Concluído', `${sucessos} confirmadas. ${falhas} recusadas (saldo). O sistema se manteve íntegro sem deadlocks!`);
+            
+            // Atualiza o painel principal após o teste
+            if (document.getElementById('page-testes').classList.contains('active')) {
+                loadDashboard();
+            }
+            
+        } catch (e) {
+            toast('error', 'Erro no Stress Test', e.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '🔥 Teste de Carga (Stress)';
+        }
+    }
+
+    // ===== INIT =====
+    syncData();
+    // Aumentamos a frequência para melhorar a sincronização com o banco (polling a cada 2.5s)
+    setInterval(syncData, 2500);
+    // Pré-carrega contas para populares os selects
+    loadContas().then(() => {
+        populateExtratoSelect();
+        loadDashboard();
+    });
+</script>
+</body>
+</html>

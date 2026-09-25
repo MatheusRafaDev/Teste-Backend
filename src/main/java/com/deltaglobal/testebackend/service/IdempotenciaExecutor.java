@@ -136,7 +136,9 @@ public class IdempotenciaExecutor {
                 // Lê o JSON salvo como um JsonNode genérico para evitar problemas de tipo
                 body = objectMapper.readTree(i.getRespostaJson());
             }
-            return ResponseEntity.status(i.getStatusHttp()).body(body);
+            // Um replay idempotente não é uma nova criação: devolve o payload
+            // original, mas sempre com 200 conforme o contrato HTTP.
+            return ResponseEntity.ok(body);
         } catch (JsonProcessingException e) {
             log.error("[IDEMPOTENCIA] Erro ao desserializar resposta salva para status {}: {}", i.getStatusHttp(), e.getMessage());
             throw new RuntimeException("Erro ao ler resposta salva", e);

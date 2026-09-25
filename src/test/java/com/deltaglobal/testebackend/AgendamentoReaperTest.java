@@ -5,6 +5,7 @@ import com.deltaglobal.testebackend.domain.EstadoAgendamento;
 import com.deltaglobal.testebackend.repository.AgendamentoRepository;
 import com.deltaglobal.testebackend.service.AgendamentoService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,6 +21,7 @@ import java.time.ZonedDateTime;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
+@Tag("reaper")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @Testcontainers(disabledWithoutDocker = true)
 class AgendamentoReaperTest {

@@ -89,6 +89,12 @@ public class EstornoService {
         Conta destino = lockedContas.stream()
                 .filter(c -> c.getId().equals(original.getContaDestino().getId())).findFirst().get();
 
+        // No estorno o destino original envia o valor de volta e a origem
+        // original o recebe. As mesmas regras de estado de uma transferência
+        // normal precisam ser aplicadas antes de qualquer alteração de saldo.
+        destino.validarAtivaParaSaida();
+        origem.validarAtivaParaEntrada();
+
         // --- PASSO 5: Valida saldo do destino (quem precisa devolver) ---
         // Decisão do README nº 1: Recusamos o estorno se o saldo for insuficiente,
         // preservando a regra "saldo de usuário nunca fica negativo".

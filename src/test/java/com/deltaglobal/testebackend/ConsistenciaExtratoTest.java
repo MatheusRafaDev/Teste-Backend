@@ -1,6 +1,7 @@
 package com.deltaglobal.testebackend;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -36,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *  - `conta.saldo_centavos` bate com a soma dos movimentos daquela conta;
  *  - a soma de todos os movimentos de todas as contas é zero."
  */
+@Tag("extrato")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers(disabledWithoutDocker = true)
 class ConsistenciaExtratoTest {
@@ -72,12 +75,14 @@ class ConsistenciaExtratoTest {
     void testConsistenciaExtratoAposConcorrencia() throws Exception {
         int numThreads = 10;
         ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+        CyclicBarrier inicioSimultaneo = new CyclicBarrier(numThreads);
 
         // Dispara 5 transferências CONTA-001 → CONTA-002 e 5 CONTA-002 → CONTA-001
         // Cada conta inicia com R$1.000,00. Valor de R$50 garante que todas passem.
         List<Callable<Void>> tasks = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
             tasks.add(() -> {
+                inicioSimultaneo.await();
                 HttpHeaders h = new HttpHeaders();
                 h.set("Idempotency-Key", UUID.randomUUID().toString());
                 h.set("Content-Type", "application/json");
@@ -87,6 +92,7 @@ class ConsistenciaExtratoTest {
                 return null;
             });
             tasks.add(() -> {
+                inicioSimultaneo.await();
                 HttpHeaders h = new HttpHeaders();
                 h.set("Idempotency-Key", UUID.randomUUID().toString());
                 h.set("Content-Type", "application/json");
