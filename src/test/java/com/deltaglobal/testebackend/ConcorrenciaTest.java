@@ -10,6 +10,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,6 +48,9 @@ class ConcorrenciaTest {
 
     @Autowired
     private TestRestTemplate restTemplate;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @BeforeEach
     void setup() {
@@ -239,5 +243,56 @@ class ConcorrenciaTest {
 
         assertEquals(1, countCreated, "Apenas uma requisição (a primeira a commitar) deve criar");
         assertEquals(4, countConflict, "As outras 4 devem dar 409 Conflict porque a chave é a mesma mas o corpo é diferente");
+    }
+
+    /**
+     * README (linha 383): "duas transferências simultâneas da mesma conta com saldo para só uma:
+     * exatamente uma vence e o saldo final está correto."
+     *
+     * CONTA-001 começa com R$1.000,00. Duas threads tentam transferir R$700,00.
+     * Sozinha cada uma passaria (700 < 1000). Juntas, a segunda estouraria o saldo (700+700 > 1000).
+     * Exatamente uma deve receber 201 e o saldo final deve ser exatamente R$1.000 - R$700 - taxa.
+     */
+    @Test
+    void testConcorrenciaSaldoPuro_UmaVenceOutraPerde() throws Exception {
+        int numThreads = 2;
+        ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+
+        Callable<ResponseEntity<String>> task = () -> {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Idempotency-Key", UUID.randomUUID().toString());
+            headers.set("Content-Type", "application/json");
+            // R$700,00: cada uma sozinha passaria (saldo=1000), juntas não (700+700=1400 > 1000)
+            String body = "{\"contaOrigem\":\"CONTA-005\", \"contaDestino\":\"CONTA-004\", \"valor\":700.00}";
+            return restTemplate.exchange("/transferencias", HttpMethod.POST,
+                    new HttpEntity<>(body, headers), String.class);
+        };
+
+        List<Future<ResponseEntity<String>>> futures = executorService.invokeAll(List.of(task, task));
+
+        int countCreated = 0;
+        int countUnprocessable = 0;
+
+        for (Future<ResponseEntity<String>> f : futures) {
+            HttpStatus status = HttpStatus.valueOf(f.get().getStatusCode().value());
+            if (status == HttpStatus.CREATED) countCreated++;
+            if (status == HttpStatus.UNPROCESSABLE_ENTITY) countUnprocessable++;
+        }
+
+        assertEquals(1, countCreated, "Exatamente uma transferência deve ser aprovada");
+        assertEquals(1, countUnprocessable, "A outra deve falhar com saldo insuficiente (422)");
+
+        // Valida que o saldo final está matematicamente correto:
+        // saldo inicial 100000 centavos - 70000 (valor) - 700 (taxa de 1%) = 29300 centavos
+        Long saldoFinal = jdbcTemplate.queryForObject(
+                "SELECT saldo_centavos FROM conta WHERE numero = 'CONTA-005'", Long.class);
+        assertEquals(29300L, saldoFinal,
+                "Saldo final de CONTA-005 incorreto. Esperado R$293,00 (100000 - 70000 - 700 de taxa)");
+
+        // Garante que a soma global de movimentos continua zero (nenhum centavo criado)
+        Long somaGlobal = jdbcTemplate.queryForObject(
+                "SELECT COALESCE(SUM(CASE WHEN tipo = 'ENTRADA' THEN valor_centavos ELSE -valor_centavos END), 0) FROM movimento",
+                Long.class);
+        assertEquals(0L, somaGlobal, "A soma global de movimentos deve ser zero");
     }
 }
