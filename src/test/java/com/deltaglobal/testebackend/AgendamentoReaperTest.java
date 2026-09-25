@@ -39,7 +39,7 @@ class AgendamentoReaperTest {
         registry.add("app.agendamento.reaper.timeout-minutos", () -> 5);
     }
 
-    @Autowired
+    @org.springframework.boot.test.mock.mockito.SpyBean
     private AgendamentoRepository agendamentoRepository;
 
     @Autowired
@@ -94,5 +94,48 @@ class AgendamentoReaperTest {
         Agendamento naoResgatado = agendamentoRepository.findById(a.getId()).orElseThrow();
         assertEquals(EstadoAgendamento.CONCLUIDO, naoResgatado.getEstado());
         assertEquals(0, naoResgatado.getTentativas());
+    }
+
+    @Test
+    void testAgendamentoCrashETransacaoAtomica() {
+        // Criar agendamento que vai vencer agora
+        Agendamento a = agendamentoService.criarAgendamento("CONTA-001", "CONTA-002", 5000L, ZonedDateTime.now().plusDays(1));
+        
+        // Mudar estado para PROCESSANDO para simular o job pegando o registro
+        jdbcTemplate.update("UPDATE agendamento SET estado = 'PROCESSANDO' WHERE id = ?", a.getId());
+        Agendamento processando = agendamentoRepository.findById(a.getId()).orElseThrow();
+
+        // Salvar saldo original
+        Long saldoOrigemAnterior = jdbcTemplate.queryForObject("SELECT saldo_centavos FROM conta WHERE numero = 'CONTA-001'", Long.class);
+
+        // Forçar um crash exato no momento de salvar o estado CONCLUIDO
+        org.mockito.Mockito.doThrow(new RuntimeException("Simulated Crash Server Down"))
+            .when(agendamentoRepository).save(org.mockito.ArgumentMatchers.argThat(
+                ag -> ag.getEstado() == EstadoAgendamento.CONCLUIDO
+            ));
+
+        // Act: Processar
+        // O método processarUmAgendamento vai rodar, a transferência vai acontecer no banco,
+        // mas ao dar save() no Agendamento, vai dar crash.
+        // O proxy @Transactional deve interceptar o crash e dar ROLLBACK em TUDO (incluindo a transferência).
+        try {
+            agendamentoService.processarUmAgendamento(processando);
+        } catch (RuntimeException e) {
+            assertEquals("Simulated Crash Server Down", e.getMessage());
+        }
+
+        // Assert: A transação foi desfeita!
+        // 1. Saldo intacto
+        Long saldoOrigemAtual = jdbcTemplate.queryForObject("SELECT saldo_centavos FROM conta WHERE numero = 'CONTA-001'", Long.class);
+        assertEquals(saldoOrigemAnterior, saldoOrigemAtual, "O saldo não deve ter mudado pois a transferência sofreu rollback");
+
+        // 2. Nenhuma transferência ligada ao agendamento existe no banco
+        Integer countTr = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM transferencia", Integer.class);
+        // Considerando que a base limpa pode ter outras (depende do initial data), 
+        // vamos checar se agendamento_id não existe ou simplesmente verificar o estado do agendamento
+        
+        // 3. O agendamento continuou em PROCESSANDO (estado pré-transação atômica)
+        Agendamento aposCrash = agendamentoRepository.findById(a.getId()).orElseThrow();
+        assertEquals(EstadoAgendamento.PROCESSANDO, aposCrash.getEstado(), "O agendamento continuou no estado anterior pois a atualização de CONCLUIDO sofreu rollback");
     }
 }
