@@ -5,14 +5,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -28,8 +26,6 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import org.junit.jupiter.api.Disabled;
 
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -128,7 +124,7 @@ class ConcorrenciaTest {
         headers.set("Idempotency-Key", UUID.randomUUID().toString());
         headers.set("Content-Type", "application/json");
         String transferBody = "{\"contaOrigem\":\"CONTA-001\", \"contaDestino\":\"CONTA-002\", \"valor\":100.00}";
-        
+        @SuppressWarnings("rawtypes")
         ResponseEntity<java.util.Map> transferRes = restTemplate.exchange("/transferencias", HttpMethod.POST, new HttpEntity<>(transferBody, headers), java.util.Map.class);
         assertEquals(HttpStatus.CREATED, transferRes.getStatusCode());
         String transfId = transferRes.getBody().get("transferenciaId").toString();

@@ -2,11 +2,9 @@ package com.deltaglobal.testebackend.service;
 
 import com.deltaglobal.testebackend.domain.Idempotencia;
 import com.deltaglobal.testebackend.domain.IdempotenciaId;
-import com.deltaglobal.testebackend.exception.BusinessException;
 import com.deltaglobal.testebackend.repository.IdempotenciaRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;

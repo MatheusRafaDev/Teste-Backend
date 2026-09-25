@@ -1,4 +1,4 @@
-package com.deltaglobal.testebackend.service;
+package com.deltaglobal.testebackend.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

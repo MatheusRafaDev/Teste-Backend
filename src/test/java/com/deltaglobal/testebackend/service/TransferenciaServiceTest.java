@@ -2,28 +2,22 @@ package com.deltaglobal.testebackend.service;
 
 import com.deltaglobal.testebackend.domain.Conta;
 import com.deltaglobal.testebackend.domain.EstadoConta;
-import com.deltaglobal.testebackend.domain.EstadoTransferencia;
-import com.deltaglobal.testebackend.domain.Transferencia;
 import com.deltaglobal.testebackend.exception.BusinessException;
 import com.deltaglobal.testebackend.repository.ContaRepository;
-import com.deltaglobal.testebackend.repository.MovimentoRepository;
 import com.deltaglobal.testebackend.repository.TransferenciaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,8 +31,6 @@ class TransferenciaServiceTest {
     @Mock
     private TransferenciaRepository transferenciaRepository;
     @Mock
-    private MovimentoRepository movimentoRepository;
-    @Mock
     private ContaService contaService;
     @Mock
     private TaxaService taxaService;
@@ -50,7 +42,7 @@ class TransferenciaServiceTest {
 
     @BeforeEach
     void setUp() {
-        transferenciaService = new TransferenciaService(contaRepository, transferenciaRepository, movimentoRepository, contaService, taxaService, clock);
+        transferenciaService = new TransferenciaService(contaRepository, transferenciaRepository, contaService, taxaService, clock);
     }
 
     @Test

@@ -3,7 +3,6 @@ package com.deltaglobal.testebackend.service;
 import com.deltaglobal.testebackend.domain.*;
 import com.deltaglobal.testebackend.exception.BusinessException;
 import com.deltaglobal.testebackend.repository.ContaRepository;
-import com.deltaglobal.testebackend.repository.MovimentoRepository;
 import com.deltaglobal.testebackend.repository.TransferenciaRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +16,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Serviço responsável pela execução de transferências entre contas.
@@ -47,17 +45,15 @@ public class TransferenciaService {
 
     private final ContaRepository contaRepository;
     private final TransferenciaRepository transferenciaRepository;
-    private final MovimentoRepository movimentoRepository;
     private final ContaService contaService;
     private final TaxaService taxaService;
     private final Clock clock;
 
     public TransferenciaService(ContaRepository contaRepository, TransferenciaRepository transferenciaRepository,
-                                MovimentoRepository movimentoRepository, ContaService contaService,
+                                ContaService contaService,
                                 TaxaService taxaService, Clock clock) {
         this.contaRepository = contaRepository;
         this.transferenciaRepository = transferenciaRepository;
-        this.movimentoRepository = movimentoRepository;
         this.contaService = contaService;
         this.taxaService = taxaService;
         this.clock = clock;
