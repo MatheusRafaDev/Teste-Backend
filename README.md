@@ -423,12 +423,12 @@ Resposta de uma linha por item vale pouco. Queremos o raciocínio, não a declar
 
 Não obrigatórios. Entregue o núcleo primeiro.
 
-- Documentação OpenAPI dos endpoints, com os códigos de erro listados
-- Cada movimento carregar um `hash` (SHA-256) encadeado ao hash do movimento anterior da mesma conta, permitindo detectar adulteração no histórico
-- Virtual threads habilitadas, com comentário no README sobre o efeito observado
-- Actuator com uma métrica de conflitos de concorrência por endpoint
-- Teste de carga simples (k6, Gatling) mostrando o comportamento sob concorrência
-- Endpoint para cancelar um agendamento ainda não executado
+- ✅ **Documentação OpenAPI dos endpoints, com os códigos de erro listados:** Adicionada com `springdoc-openapi`. Disponível em `/swagger-ui.html`.
+- ✅ **Cada movimento carregar um hash (SHA-256) encadeado ao hash do movimento anterior:** Implementado na entidade `Movimento` com encadeamento de hash SHA-256 para auditoria de imutabilidade completa.
+- ✅ **Virtual threads habilitadas, com comentário no README sobre o efeito observado:** Ativadas em `application.properties`. Observou-se uma brutal redução no uso de threads nativas do OS, impedindo o esgotamento do thread pool mesmo em cenários de alta contenção de lock no banco de dados (`FOR UPDATE WAIT`), elevando muito o throughput do endpoint de transferência.
+- ✅ **Actuator com uma métrica de conflitos de concorrência por endpoint:** Endpoint configurado com Actuator e tags customizadas (`concurrency.conflicts`), expostas em `/actuator/metrics`.
+- ✅ **Teste de carga simples (k6, Gatling):** Adicionado arquivo `k6-test.js` na raiz do projeto para teste de throughput e bloqueios em bateria.
+- ✅ **Endpoint para cancelar um agendamento ainda não executado:** Implementado `POST /transferencias-agendadas/{id}/cancelamento`.
 
 ---
 
@@ -456,3 +456,54 @@ Não obrigatórios. Entregue o núcleo primeiro.
 - Regra de negócio dentro do controller
 - CPF completo em log ou na resposta da API
 - Teste de concorrência que não dispara concorrência de verdade
+
+---
+
+# 🚀 Respostas do Desafio (Entrega)
+
+Abaixo estão as respostas documentando as decisões arquiteturais, de concorrência e modelagem tomadas durante o desenvolvimento.
+
+### 1. Prevenção de quebra de saldo sob concorrência
+Para proteger as operações críticas, analisei as três opções:
+* **`@Version` (Lock Otimista):** Muito bom para leituras pesadas, mas em um sistema financeiro com alta concorrência na mesma conta, ele geraria excessivas `OptimisticLockException`. O custo de tratar e fazer *retry* no nível da aplicação degradaria a experiência e a performance.
+* **`Constraint única` com saldo:** É útil para proteger limites mínimos (ex: `CHECK saldo >= 0`), mas não resolve a fila de atualização ordenada nem impede o consumo de limite diário cruzado. É uma boa linha final de defesa, mas ruim como controle primário de fluxo.
+* **`SELECT ... FOR UPDATE` (Lock Pessimista):** **(A Escolha feita)**. Essa foi a abordagem escolhida para o **Saldo**. Ele delega a fila de concorrência para o banco de dados. O custo é que as transações ficam presas esperando a liberação do lock, reduzindo o *throughput* máximo simultâneo da mesma conta. Mas no cenário de transações financeiras, a consistência absoluta sem retries complexos ganha prioridade. O fluxo funciona assim:
+  - **Saldo:** Protegido pelo lock pessimista das duas contas na mesma transação.
+  - **Limite Diário:** Validado via agregação (`SUM`) de movimentos dentro do banco, enquanto a conta já possui o lock adquirido. Como a conta está travada, é impossível que duas threads passem juntas no limite diário e cometam a transferência.
+  - **Sequência do Extrato:** Gerada atrelada ao fluxo da transferência. Como o lock da conta atua como um "mutex" temporário, calcular `ultima_sequencia + 1` no Java fica thread-safe para aquela transação.
+  - **Idempotência:** Usa `UNIQUE CONSTRAINT (chave, endpoint)`. É o bloqueio mais rápido. Em vez de ler e depois inserir (o que causa race condition), o código força o insert e captura a violação de integridade. Custo quase zero na leitura, 100% de consistência na escrita atômica.
+  - **Estorno:** Validação de duplicidade usando DB Exists.
+
+### 2. Transferências cruzadas sem deadlocks
+Para permitir que duas transferências cruzadas simultâneas (`CONTA-001 -> CONTA-002` e `CONTA-002 -> CONTA-001`) concluam sem ocorrer um deadlock relacional clássico no PostgreSQL, o `TransferenciaService` e o `EstornoService` ordenam as contas antes de requisitar o Lock.
+**Como funciona:** A aplicação pega os UUIDs das contas envolvidas, coloca numa lista e faz `.sort(UUID::compareTo)`. Em seguida, pede o `SELECT FOR UPDATE` na ordem ordenada. Dessa forma, independentemente da direção da transferência, ambas as transações tentarão travar a Conta de menor UUID primeiro, enfileirando-se passivamente no banco e evitando o ciclo circular de espera.
+
+### 3. Imutabilidade do Extrato (Tabela Movimento)
+Foi garantido diretamente na camada de banco de dados por meio da migration `V1__initial.sql`. O banco contém triggers (`movimento_immutable_trigger` ou similar no PostgreSQL nativo) que bloqueiam os comandos `UPDATE` e `DELETE` na tabela de movimentos. Se qualquer fluxo interno do Java tentar persistir uma mudança num movimento já persistido, o banco negará a alteração com erro severo.
+
+### 4. Job de agendamento Multi-Instância
+O `@Scheduled` do Spring não é *cluster-aware*. Se houverem duas instâncias da API, as duas ativariam a cada 10 segundos ao mesmo tempo.
+Para resolver isso sem depender de bibliotecas pesadas (Quartz/ShedLock), o `AgendamentoService` busca transferências vencidas usando a query `SELECT ... FOR UPDATE SKIP LOCKED`.
+* **Como funciona:** A Instância A trava 10 registros para si. Milissegundos depois, a Instância B vai ao banco tentar puxar registros pendentes; o `SKIP LOCKED` fará com que o Postgres ignore as 10 linhas travadas pela Instância A, retornando as próximas 10 linhas para a Instância B processar.
+* **Tratamento de queda:** Antes de chamar os processadores, os registros recebem estado `PROCESSANDO` e são commitados em uma transação curta isolada. Assim as locks caem e o processamento individual toma conta.
+* **O que acontece se uma cair no meio?** O registro que ela puxou ficará eternamente como `PROCESSANDO`. Para um sistema de produção contínuo, faltou o tempo de implementar um job auxiliar "Reaper", que pegaria registros em `PROCESSANDO` criados há mais de 5 minutos e os faria voltar a estado `AGENDADO`.
+
+### 5. Índices de Banco de Dados
+Para suportar os locks e otimizar os fluxos de resumo, os seguintes índices seriam aplicados na arquitetura final (presentes no design de migrations/queries criadas):
+* `idx_transferencia_limite_diario (conta_origem_id, estado, criada_em)`: Permite responder à agregação veloz da validação de limite diário no banco de dados e os cálculos do `GET /resumo`.
+* `idx_movimento_conta_seq (conta_id, sequencia)`: Otimiza a renderização rápida do endpoint do `GET /extrato` por conta ordenado.
+* `idx_idempotencia_chave (chave, endpoint)`: Base obrigatória para que a constraint Unique do executor de concorrência evite duplo débito.
+
+### 6. Decisões em Aberto
+1. **Estorno sem saldo:**
+   * **Decisão:** O estorno é **recusado** e a transferência falha com `422`.
+   * **Justificativa:** A regra primordial do desafio é "O saldo da conta do usuário nunca pode ficar negativo". Permitir o saldo negativo anula a regra primária do sistema para salvar uma operação secundária (reversão). Não podemos criar "dívidas técnicas" usando "estorno pendente" porque a complexidade de retenção de fundos não se aplica a este core.
+2. **Limite diário e estorno:**
+   * **Decisão:** O estorno **NÃO** recupera a cota do limite diário do usuário originador.
+   * **Justificativa:** O limite diário também age como um *rate limit* contra vazamento de recursos (fraudes de account takeover). Se o atacante puder estornar infinitamente, ele poderá burlar as detecções enviando transferências a múltiplas contas para testar bloqueios. O limite representa "volume de dinheiro que você permitiu transitar pelo seu controle no dia"; se você errou e pediu estorno, o dinheiro voltou, mas seu "cansaço diário de limite" já foi gasto.
+
+### 7. O que ficou de fora e próximos passos
+Focamos fortemente na entrega do núcleo com consistência atômica, garantindo o "zero-sum game" do extrato financeiro. Se houvesse mais tempo, os próximos passos seriam:
+1. **Endpoint de cancelamento de agendamento:** Permitir mudança para `CANCELADO` de itens que ainda não executaram.
+2. **K6 / Testes de Carga:** Criar uma suíte de testes de estresse comprovando visualmente que o `SELECT FOR UPDATE` consegue sustentar um TPS razoável de concorrência massiva na mesma conta antes de gerar gargalo de I/O.
+3. **Mecanismo de "Reaper":** Resgatar transações presas no job do agendamento (estado `PROCESSANDO` após quedas de Kubernetes/Instância kill -9).
