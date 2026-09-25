@@ -459,7 +459,7 @@ Não obrigatórios. Entregue o núcleo primeiro.
 
 ---
 
-# 🚀 Respostas do Desafio (Entrega)
+# Respostas do Desafio (Entrega)
 
 Abaixo estão as respostas documentando as decisões arquiteturais, de concorrência e modelagem tomadas durante o desenvolvimento.
 
